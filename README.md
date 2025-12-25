@@ -1,22 +1,22 @@
 ````md
 # @ciscodeapps-template/database
 
-A **framework-agnostic**, **Nest-friendly**, **OOP-style** database library that gives you a **single, consistent repository API** for:
+A framework-agnostic, Nest-friendly, OOP-style database library that gives you a single, consistent repository API for:
 
-- **MongoDB** (via Mongoose)
-- **PostgreSQL** (via Knex + pg)
+- MongoDB (via Mongoose)
+- PostgreSQL (via Knex + pg)
 
-You create a `Database` instance with `{ type: 'mongo' | 'postgres', connectionString }`, then create **repositories** per entity.  
+You create a `Database` instance with `{ type: 'mongo' | 'postgres', connectionString }`, then create repositories per entity.  
 Repositories expose the same methods regardless of the underlying DB (Mongo or Postgres).
 
 ---
 
 ## ✨ Features
 
-- ✅ Works with **MongoDB** *and* **PostgreSQL**
-- ✅ **OOP-style**: create a `Database` object and repositories from it
-- ✅ **Model-agnostic**: you pass your own Mongoose model or table config
-- ✅ **Same repository API** for Mongo and Postgres:
+- ✅ Works with MongoDB and PostgreSQL
+- ✅ OOP-style: create a `Database` object and repositories from it
+- ✅ Model-agnostic: you pass your own Mongoose model or table config
+- ✅ Same repository API for Mongo and Postgres:
   - `create`
   - `findById`
   - `findAll`
@@ -25,7 +25,7 @@ Repositories expose the same methods regardless of the underlying DB (Mongo or P
   - `deleteById`
   - `count`
   - `exists`
-- ✅ Optional **NestJS module** with `DatabaseModule.forRoot()` and `@InjectDatabase()`
+- ✅ Optional NestJS module with `DatabaseModule.forRoot()` and `@InjectDatabase()`
 - ✅ Safe filtering + pagination for building consistent REST endpoints
 
 ---
