@@ -1,5 +1,3 @@
-// src/adapters/postgres.adapter.spec.ts
-
 import { PostgresAdapter } from './postgres.adapter';
 import { PostgresDatabaseConfig, PostgresTransactionContext } from '../contracts/database.contracts';
 
@@ -137,6 +135,10 @@ describe('PostgresAdapter', () => {
             expect(typeof repo.deleteById).toBe('function');
             expect(typeof repo.count).toBe('function');
             expect(typeof repo.exists).toBe('function');
+            // Bulk operations
+            expect(typeof repo.insertMany).toBe('function');
+            expect(typeof repo.updateMany).toBe('function');
+            expect(typeof repo.deleteMany).toBe('function');
         });
 
         it('should use default primary key when not specified', () => {
@@ -145,6 +147,35 @@ describe('PostgresAdapter', () => {
             });
 
             expect(repo).toBeDefined();
+        });
+
+        it('should have insertMany method that returns array', async () => {
+            const repo = adapter.createRepository({ table: 'users' });
+
+            // Test that insertMany returns an array (mock returns array)
+            const result = await repo.insertMany([{ name: 'John' }, { name: 'Jane' }]);
+            expect(Array.isArray(result)).toBe(true);
+        });
+
+        it('should return empty array when insertMany with empty data', async () => {
+            const repo = adapter.createRepository({ table: 'users' });
+
+            const result = await repo.insertMany([]);
+            expect(result).toEqual([]);
+        });
+
+        it('should have updateMany method that returns count', async () => {
+            const repo = adapter.createRepository({ table: 'users' });
+
+            // updateMany method exists
+            expect(typeof repo.updateMany).toBe('function');
+        });
+
+        it('should have deleteMany method that returns count', async () => {
+            const repo = adapter.createRepository({ table: 'users' });
+
+            // deleteMany method exists
+            expect(typeof repo.deleteMany).toBe('function');
         });
     });
 

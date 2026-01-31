@@ -244,6 +244,40 @@ export class PostgresAdapter {
                     .first();
                 return !!row;
             },
+
+            // -----------------------------
+            // Bulk Operations
+            // -----------------------------
+
+            async insertMany(data: Partial<T>[]): Promise<T[]> {
+                if (data.length === 0) return [];
+
+                const rows = await kx(table)
+                    .insert(data)
+                    .returning('*');
+
+                return rows as T[];
+            },
+
+            async updateMany(filter: Record<string, unknown>, update: Partial<T>): Promise<number> {
+                const mergedFilter = { ...baseFilter, ...filter };
+
+                const affectedRows = await kx(table)
+                    .modify((q) => applyFilter(q, mergedFilter))
+                    .update(update);
+
+                return affectedRows;
+            },
+
+            async deleteMany(filter: Record<string, unknown>): Promise<number> {
+                const mergedFilter = { ...baseFilter, ...filter };
+
+                const affectedRows = await kx(table)
+                    .modify((q) => applyFilter(q, mergedFilter))
+                    .delete();
+
+                return affectedRows;
+            },
         };
 
         return repo;

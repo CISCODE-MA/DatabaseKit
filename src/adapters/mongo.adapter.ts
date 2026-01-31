@@ -176,6 +176,34 @@ export class MongoAdapter {
                 const res = await model.exists(filter);
                 return !!res;
             },
+
+            // -----------------------------
+            // Bulk Operations
+            // -----------------------------
+
+            async insertMany(data: Partial<T>[]): Promise<T[]> {
+                if (data.length === 0) return [];
+
+                const docs = session
+                    ? await model.insertMany(data, { session })
+                    : await model.insertMany(data);
+
+                return docs.map((doc) =>
+                    (doc as { toObject?: () => T }).toObject?.() ?? (doc as T)
+                );
+            },
+
+            async updateMany(filter: Record<string, unknown>, update: Partial<T>): Promise<number> {
+                const options = session ? { session } : {};
+                const result = await model.updateMany(filter, update, options).exec();
+                return result.modifiedCount;
+            },
+
+            async deleteMany(filter: Record<string, unknown>): Promise<number> {
+                const options = session ? { session } : {};
+                const result = await model.deleteMany(filter, options).exec();
+                return result.deletedCount;
+            },
         };
 
         return repo;

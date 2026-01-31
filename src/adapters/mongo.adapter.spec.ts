@@ -1,5 +1,3 @@
-// src/adapters/mongo.adapter.spec.ts
-
 import { MongoAdapter } from './mongo.adapter';
 import { MongoDatabaseConfig, MongoTransactionContext } from '../contracts/database.contracts';
 
@@ -95,6 +93,9 @@ describe('MongoAdapter', () => {
                 findByIdAndDelete: jest.fn().mockReturnThis(),
                 countDocuments: jest.fn().mockReturnThis(),
                 exists: jest.fn(),
+                insertMany: jest.fn(),
+                updateMany: jest.fn().mockReturnThis(),
+                deleteMany: jest.fn().mockReturnThis(),
                 lean: jest.fn().mockReturnThis(),
                 exec: jest.fn(),
                 skip: jest.fn().mockReturnThis(),
@@ -113,6 +114,71 @@ describe('MongoAdapter', () => {
             expect(typeof repo.deleteById).toBe('function');
             expect(typeof repo.count).toBe('function');
             expect(typeof repo.exists).toBe('function');
+            // Bulk operations
+            expect(typeof repo.insertMany).toBe('function');
+            expect(typeof repo.updateMany).toBe('function');
+            expect(typeof repo.deleteMany).toBe('function');
+        });
+
+        it('should insertMany documents', async () => {
+            const mockDocs = [
+                { _id: '1', name: 'John', toObject: () => ({ _id: '1', name: 'John' }) },
+                { _id: '2', name: 'Jane', toObject: () => ({ _id: '2', name: 'Jane' }) },
+            ];
+            const mockModel = {
+                insertMany: jest.fn().mockResolvedValue(mockDocs),
+            };
+
+            const repo = adapter.createRepository({ model: mockModel });
+            const result = await repo.insertMany([{ name: 'John' }, { name: 'Jane' }]);
+
+            expect(mockModel.insertMany).toHaveBeenCalledWith([{ name: 'John' }, { name: 'Jane' }]);
+            expect(result).toHaveLength(2);
+            expect(result[0]).toEqual({ _id: '1', name: 'John' });
+        });
+
+        it('should return empty array when insertMany with empty data', async () => {
+            const mockModel = {
+                insertMany: jest.fn(),
+            };
+
+            const repo = adapter.createRepository({ model: mockModel });
+            const result = await repo.insertMany([]);
+
+            expect(result).toEqual([]);
+            expect(mockModel.insertMany).not.toHaveBeenCalled();
+        });
+
+        it('should updateMany documents', async () => {
+            const mockModel = {
+                updateMany: jest.fn().mockReturnValue({
+                    exec: jest.fn().mockResolvedValue({ modifiedCount: 5 }),
+                }),
+            };
+
+            const repo = adapter.createRepository({ model: mockModel });
+            const result = await repo.updateMany({ status: 'active' }, { status: 'inactive' });
+
+            expect(mockModel.updateMany).toHaveBeenCalledWith(
+                { status: 'active' },
+                { status: 'inactive' },
+                {},
+            );
+            expect(result).toBe(5);
+        });
+
+        it('should deleteMany documents', async () => {
+            const mockModel = {
+                deleteMany: jest.fn().mockReturnValue({
+                    exec: jest.fn().mockResolvedValue({ deletedCount: 3 }),
+                }),
+            };
+
+            const repo = adapter.createRepository({ model: mockModel });
+            const result = await repo.deleteMany({ status: 'deleted' });
+
+            expect(mockModel.deleteMany).toHaveBeenCalledWith({ status: 'deleted' }, {});
+            expect(result).toBe(3);
         });
     });
 

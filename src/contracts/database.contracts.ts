@@ -144,6 +144,32 @@ export interface Repository<T = unknown, Filter = Record<string, unknown>> {
      * @returns True if at least one entity matches
      */
     exists(filter?: Filter): Promise<boolean>;
+
+    // -----------------------------
+    // Bulk Operations
+    // -----------------------------
+
+    /**
+     * Creates multiple entities in a single operation.
+     * @param data - Array of partial entity data
+     * @returns Array of created entities
+     */
+    insertMany(data: Partial<T>[]): Promise<T[]>;
+
+    /**
+     * Updates multiple entities matching the filter.
+     * @param filter - Filter criteria to match entities
+     * @param update - Partial update data to apply
+     * @returns Number of entities updated
+     */
+    updateMany(filter: Filter, update: Partial<T>): Promise<number>;
+
+    /**
+     * Deletes multiple entities matching the filter.
+     * @param filter - Filter criteria to match entities
+     * @returns Number of entities deleted
+     */
+    deleteMany(filter: Filter): Promise<number>;
 }
 
 // -----------------------------
