@@ -1,5 +1,3 @@
-// src/contracts/database.contracts.ts
-
 /**
  * Database configuration types and interfaces for DatabaseKit.
  * These contracts define the public API surface for the package.
@@ -221,6 +219,83 @@ export interface DatabaseKitModuleAsyncOptions {
 }
 
 // -----------------------------
+// Transaction Types
+// -----------------------------
+
+/**
+ * Transaction isolation levels supported by PostgreSQL.
+ * MongoDB doesn't support isolation levels in the same way.
+ */
+export type TransactionIsolationLevel =
+    | 'read uncommitted'
+    | 'read committed'
+    | 'repeatable read'
+    | 'serializable';
+
+/**
+ * Options for transaction execution.
+ */
+export interface TransactionOptions {
+    /**
+     * Isolation level for the transaction (PostgreSQL only).
+     * Default: 'read committed'
+     */
+    isolationLevel?: TransactionIsolationLevel;
+    /**
+     * Maximum time in milliseconds to wait for the transaction to complete.
+     * Default: 30000 (30 seconds)
+     */
+    timeout?: number;
+    /**
+     * Number of retry attempts on transient failures.
+     * Default: 0 (no retries)
+     */
+    retries?: number;
+}
+
+/**
+ * Context passed to transaction callback functions.
+ * Contains transaction-aware repository factory.
+ */
+export interface TransactionContext<TAdapter = unknown> {
+    /**
+     * The underlying transaction object.
+     * - For MongoDB: ClientSession
+     * - For PostgreSQL: Knex.Transaction
+     */
+    transaction: TAdapter;
+}
+
+/**
+ * MongoDB-specific transaction context.
+ */
+export interface MongoTransactionContext extends TransactionContext {
+    /**
+     * Creates a transaction-aware repository.
+     * All operations on this repository will be part of the transaction.
+     */
+    createRepository: <T>(options: MongoRepositoryOptions) => Repository<T>;
+}
+
+/**
+ * PostgreSQL-specific transaction context.
+ */
+export interface PostgresTransactionContext extends TransactionContext {
+    /**
+     * Creates a transaction-aware repository.
+     * All operations on this repository will be part of the transaction.
+     */
+    createRepository: <T>(config: PostgresEntityConfig) => Repository<T>;
+}
+
+/**
+ * Callback function type for transaction execution.
+ */
+export type TransactionCallback<TContext, TResult> = (
+    context: TContext,
+) => Promise<TResult>;
+
+// -----------------------------
 // Constants
 // -----------------------------
 
@@ -236,4 +311,6 @@ export const DATABASE_KIT_CONSTANTS = {
     DEFAULT_POOL_SIZE: 10,
     /** Default connection timeout in milliseconds */
     DEFAULT_CONNECTION_TIMEOUT: 5000,
+    /** Default transaction timeout in milliseconds */
+    DEFAULT_TRANSACTION_TIMEOUT: 30000,
 } as const;

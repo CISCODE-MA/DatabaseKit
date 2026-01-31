@@ -1,13 +1,15 @@
-// src/adapters/postgres.adapter.ts
-
 import knex, { Knex } from 'knex';
 import { Injectable, Logger } from '@nestjs/common';
 import {
     PostgresDatabaseConfig,
     PostgresEntityConfig,
+    PostgresTransactionContext,
     Repository,
     PageResult,
     PageOptions,
+    TransactionOptions,
+    TransactionCallback,
+    DATABASE_KIT_CONSTANTS,
 } from '../contracts/database.contracts';
 
 /**
@@ -89,10 +91,11 @@ export class PostgresAdapter {
      * The repository provides a standardized CRUD interface.
      * 
      * @param cfg - Configuration for the entity/table
+     * @param trx - Optional Knex transaction for transaction support
      * @returns Repository instance with CRUD methods
      */
-    createRepository<T = unknown>(cfg: PostgresEntityConfig): Repository<T> {
-        const kx = this.getKnex();
+    createRepository<T = unknown>(cfg: PostgresEntityConfig, trx?: Knex.Transaction): Repository<T> {
+        const kx = trx || this.getKnex();
         const table = cfg.table;
         const pk = cfg.primaryKey || 'id';
         const allowed = cfg.columns || [];
@@ -244,5 +247,112 @@ export class PostgresAdapter {
         };
 
         return repo;
+    }
+
+    /**
+     * Executes a callback within a PostgreSQL transaction.
+     * All database operations within the callback are atomic.
+     * 
+     * @param callback - Function to execute within the transaction
+     * @param options - Transaction options including isolation level
+     * @returns Result of the callback function
+     * @throws Error if transaction fails after all retries
+     * 
+     * @example
+     * ```typescript
+     * const result = await postgresAdapter.withTransaction(async (ctx) => {
+     *   const usersRepo = ctx.createRepository<User>({ table: 'users' });
+     *   const ordersRepo = ctx.createRepository<Order>({ table: 'orders' });
+     *   
+     *   const [user] = await usersRepo.create({ name: 'John' });
+     *   const [order] = await ordersRepo.create({ user_id: user.id, total: 100 });
+     *   
+     *   return { user, order };
+     * }, { isolationLevel: 'serializable' });
+     * ```
+     */
+    async withTransaction<TResult>(
+        callback: TransactionCallback<PostgresTransactionContext, TResult>,
+        options: TransactionOptions = {},
+    ): Promise<TResult> {
+        const {
+            isolationLevel = 'read committed',
+            retries = 0,
+            timeout = DATABASE_KIT_CONSTANTS.DEFAULT_TRANSACTION_TIMEOUT,
+        } = options;
+
+        const kx = this.getKnex();
+        let lastError: Error | undefined;
+
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            try {
+                const result = await kx.transaction(
+                    async (trx) => {
+                        // Set statement timeout for the transaction
+                        await trx.raw(`SET LOCAL statement_timeout = ${timeout}`);
+
+                        const context: PostgresTransactionContext = {
+                            transaction: trx,
+                            createRepository: <T>(config: PostgresEntityConfig) =>
+                                this.createRepository<T>(config, trx),
+                        };
+
+                        return await callback(context);
+                    },
+                    { isolationLevel },
+                );
+
+                this.logger.debug(`Transaction committed successfully (attempt ${attempt + 1})`);
+                return result;
+            } catch (error) {
+                lastError = error as Error;
+
+                this.logger.warn(
+                    `Transaction failed (attempt ${attempt + 1}/${retries + 1}): ${lastError.message}`,
+                );
+
+                // Check if error is retryable
+                const isRetryable = this.isRetryableError(error);
+                if (!isRetryable || attempt >= retries) {
+                    throw lastError;
+                }
+
+                // Exponential backoff before retry
+                const backoffMs = Math.min(100 * Math.pow(2, attempt), 3000);
+                await this.sleep(backoffMs);
+            }
+        }
+
+        throw lastError || new Error('Transaction failed');
+    }
+
+    /**
+     * Checks if a PostgreSQL error is retryable.
+     */
+    private isRetryableError(error: unknown): boolean {
+        if (error && typeof error === 'object') {
+            const pgError = error as { code?: string; routine?: string };
+
+            // PostgreSQL serialization failure codes
+            const retryableCodes = [
+                '40001', // serialization_failure
+                '40P01', // deadlock_detected
+                '55P03', // lock_not_available
+                '57P01', // admin_shutdown
+                '57014', // query_canceled (timeout)
+            ];
+
+            if (pgError.code && retryableCodes.includes(pgError.code)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Simple sleep utility for retry backoff.
+     */
+    private sleep(ms: number): Promise<void> {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 }

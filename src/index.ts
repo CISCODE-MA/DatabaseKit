@@ -69,6 +69,14 @@ export {
     PageResult,
     PageOptions,
 
+    // Transaction types
+    TransactionIsolationLevel,
+    TransactionOptions,
+    TransactionContext,
+    MongoTransactionContext,
+    PostgresTransactionContext,
+    TransactionCallback,
+
     // Repository options
     MongoRepositoryOptions,
     PostgresEntityConfig,

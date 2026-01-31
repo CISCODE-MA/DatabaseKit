@@ -38,6 +38,22 @@ describe('DatabaseService', () => {
                 }),
             ).toThrow('Database type is "mongo"');
         });
+
+        it('should throw when using withPostgresTransaction with mongo config', async () => {
+            await expect(
+                service.withPostgresTransaction(async () => {
+                    return 'test';
+                }),
+            ).rejects.toThrow('Database type is "mongo"');
+        });
+
+        it('should have withMongoTransaction method', () => {
+            expect(typeof service.withMongoTransaction).toBe('function');
+        });
+
+        it('should have withTransaction method', () => {
+            expect(typeof service.withTransaction).toBe('function');
+        });
     });
 
     describe('PostgreSQL', () => {
@@ -69,6 +85,22 @@ describe('DatabaseService', () => {
                     model: {},
                 }),
             ).toThrow('Database type is "postgres"');
+        });
+
+        it('should throw when using withMongoTransaction with postgres config', async () => {
+            await expect(
+                service.withMongoTransaction(async () => {
+                    return 'test';
+                }),
+            ).rejects.toThrow('Database type is "postgres"');
+        });
+
+        it('should have withPostgresTransaction method', () => {
+            expect(typeof service.withPostgresTransaction).toBe('function');
+        });
+
+        it('should have withTransaction method', () => {
+            expect(typeof service.withTransaction).toBe('function');
         });
     });
 });

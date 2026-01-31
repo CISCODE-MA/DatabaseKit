@@ -1,5 +1,3 @@
-// src/services/database.service.ts
-
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import {
     DatabaseConfig,
@@ -7,7 +5,11 @@ import {
     PostgresDatabaseConfig,
     MongoRepositoryOptions,
     PostgresEntityConfig,
+    MongoTransactionContext,
+    PostgresTransactionContext,
     Repository,
+    TransactionOptions,
+    TransactionCallback,
 } from '../contracts/database.contracts';
 import { MongoAdapter } from '../adapters/mongo.adapter';
 import { PostgresAdapter } from '../adapters/postgres.adapter';
@@ -221,5 +223,110 @@ export class DatabaseService implements OnModuleDestroy {
         }
 
         return this.postgresAdapter;
+    }
+
+    /**
+     * Executes a callback within a MongoDB transaction.
+     * All database operations within the callback are atomic.
+     * 
+     * **Note:** MongoDB transactions require a replica set.
+     * 
+     * @param callback - Function to execute within the transaction
+     * @param options - Transaction options
+     * @returns Result of the callback function
+     * @throws Error if database type is not 'mongo' or transaction fails
+     * 
+     * @example
+     * ```typescript
+     * const result = await db.withMongoTransaction(async (ctx) => {
+     *   const usersRepo = ctx.createRepository<User>({ model: UserModel });
+     *   const user = await usersRepo.create({ name: 'John' });
+     *   return user;
+     * });
+     * ```
+     */
+    async withMongoTransaction<TResult>(
+        callback: TransactionCallback<MongoTransactionContext, TResult>,
+        options?: TransactionOptions,
+    ): Promise<TResult> {
+        if (this.config.type !== 'mongo') {
+            throw new Error(
+                `Database type is "${this.config.type}". withMongoTransaction can only be used when type === "mongo".`,
+            );
+        }
+
+        const adapter = this.getMongoAdapter();
+        return adapter.withTransaction(callback, options);
+    }
+
+    /**
+     * Executes a callback within a PostgreSQL transaction.
+     * All database operations within the callback are atomic.
+     * 
+     * @param callback - Function to execute within the transaction
+     * @param options - Transaction options including isolation level
+     * @returns Result of the callback function
+     * @throws Error if database type is not 'postgres' or transaction fails
+     * 
+     * @example
+     * ```typescript
+     * const result = await db.withPostgresTransaction(async (ctx) => {
+     *   const usersRepo = ctx.createRepository<User>({ table: 'users' });
+     *   const user = await usersRepo.create({ name: 'John' });
+     *   return user;
+     * }, { isolationLevel: 'serializable' });
+     * ```
+     */
+    async withPostgresTransaction<TResult>(
+        callback: TransactionCallback<PostgresTransactionContext, TResult>,
+        options?: TransactionOptions,
+    ): Promise<TResult> {
+        if (this.config.type !== 'postgres') {
+            throw new Error(
+                `Database type is "${this.config.type}". withPostgresTransaction can only be used when type === "postgres".`,
+            );
+        }
+
+        const adapter = this.getPostgresAdapter();
+        return adapter.withTransaction(callback, options);
+    }
+
+    /**
+     * Generic transaction method that works with the configured database type.
+     * Automatically routes to the appropriate transaction handler.
+     * 
+     * @param callback - Function to execute within the transaction
+     * @param options - Transaction options
+     * @returns Result of the callback function
+     * 
+     * @example
+     * ```typescript
+     * // Works with whatever database type is configured
+     * const result = await db.withTransaction(async (ctx) => {
+     *   const repo = ctx.createRepository({ ... });
+     *   return repo.create({ name: 'John' });
+     * });
+     * ```
+     */
+    async withTransaction<TResult>(
+        callback: TransactionCallback<MongoTransactionContext | PostgresTransactionContext, TResult>,
+        options?: TransactionOptions,
+    ): Promise<TResult> {
+        switch (this.config.type) {
+            case 'mongo':
+                return this.withMongoTransaction(
+                    callback as TransactionCallback<MongoTransactionContext, TResult>,
+                    options,
+                );
+            case 'postgres':
+                return this.withPostgresTransaction(
+                    callback as TransactionCallback<PostgresTransactionContext, TResult>,
+                    options,
+                );
+            default: {
+                const exhaustiveCheck: never = this.config;
+                throw new Error(`Unsupported database type: ${(exhaustiveCheck as DatabaseConfig).type}`);
+            }
+        }
     }
 }
