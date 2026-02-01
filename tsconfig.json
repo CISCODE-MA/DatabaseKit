@@ -2,16 +2,59 @@
   "compilerOptions": {
     "target": "ES2019",
     "module": "commonjs",
+    "lib": [
+      "ES2019"
+    ],
     "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": true,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "baseUrl": ".",
+    "paths": {
+      "@adapters/*": [
+        "src/adapters/*"
+      ],
+      "@config/*": [
+        "src/config/*"
+      ],
+      "@contracts/*": [
+        "src/contracts/*"
+      ],
+      "@filters/*": [
+        "src/filters/*"
+      ],
+      "@middleware/*": [
+        "src/middleware/*"
+      ],
+      "@services/*": [
+        "src/services/*"
+      ],
+      "@utils/*": [
+        "src/utils/*"
+      ]
+    }
   },
-  "include": ["src"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ]
 }

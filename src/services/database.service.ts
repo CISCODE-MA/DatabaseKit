@@ -1,0 +1,225 @@
+// src/services/database.service.ts
+
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import {
+    DatabaseConfig,
+    MongoDatabaseConfig,
+    PostgresDatabaseConfig,
+    MongoRepositoryOptions,
+    PostgresEntityConfig,
+    Repository,
+} from '../contracts/database.contracts';
+import { MongoAdapter } from '../adapters/mongo.adapter';
+import { PostgresAdapter } from '../adapters/postgres.adapter';
+
+/**
+ * Main database service that provides a unified interface
+ * for database operations across MongoDB and PostgreSQL.
+ * 
+ * This service acts as a facade over the underlying adapters,
+ * providing a clean API for creating repositories and managing connections.
+ * 
+ * @example
+ * ```typescript
+ * // In a NestJS service
+ * @Injectable()
+ * export class UserService {
+ *   private readonly usersRepo: Repository<User>;
+ * 
+ *   constructor(@InjectDatabase() private readonly db: DatabaseService) {
+ *     this.usersRepo = db.createMongoRepository({ model: UserModel });
+ *   }
+ * }
+ * ```
+ */
+@Injectable()
+export class DatabaseService implements OnModuleDestroy {
+    private readonly logger = new Logger(DatabaseService.name);
+    private readonly config: DatabaseConfig;
+
+    private mongoAdapter?: MongoAdapter;
+    private postgresAdapter?: PostgresAdapter;
+
+    constructor(config: DatabaseConfig) {
+        this.config = config;
+        this.logger.log(`DatabaseService initialized with type: ${config.type}`);
+    }
+
+    /**
+     * Lifecycle hook called when the module is being destroyed.
+     * Gracefully closes all database connections.
+     */
+    async onModuleDestroy(): Promise<void> {
+        this.logger.log('Cleaning up database connections...');
+        await this.disconnect();
+    }
+
+    /**
+     * Returns the current database type.
+     */
+    get type(): 'mongo' | 'postgres' {
+        return this.config.type;
+    }
+
+    /**
+     * Checks if the database is connected.
+     */
+    isConnected(): boolean {
+        switch (this.config.type) {
+            case 'mongo':
+                return this.mongoAdapter?.isConnected() ?? false;
+            case 'postgres':
+                return this.postgresAdapter?.isConnected() ?? false;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Initializes the underlying driver connection.
+     * Must be awaited before using repositories.
+     */
+    async connect(): Promise<void> {
+        switch (this.config.type) {
+            case 'mongo': {
+                if (!this.mongoAdapter) {
+                    this.mongoAdapter = new MongoAdapter(this.config as MongoDatabaseConfig);
+                }
+                await this.mongoAdapter.connect();
+                this.logger.log('MongoDB connection established');
+                break;
+            }
+
+            case 'postgres': {
+                if (!this.postgresAdapter) {
+                    this.postgresAdapter = new PostgresAdapter(this.config as PostgresDatabaseConfig);
+                }
+                this.postgresAdapter.connect();
+                this.logger.log('PostgreSQL connection pool established');
+                break;
+            }
+
+            default: {
+                // TypeScript exhaustiveness check - this should never happen
+                const exhaustiveCheck: never = this.config;
+                throw new Error(`Unsupported database type: ${(exhaustiveCheck as DatabaseConfig).type}`);
+            }
+        }
+    }
+
+    /**
+     * Gracefully disconnects from the database.
+     */
+    async disconnect(): Promise<void> {
+        try {
+            if (this.mongoAdapter) {
+                await this.mongoAdapter.disconnect();
+                this.mongoAdapter = undefined;
+            }
+
+            if (this.postgresAdapter) {
+                await this.postgresAdapter.disconnect();
+                this.postgresAdapter = undefined;
+            }
+
+            this.logger.log('All database connections closed');
+        } catch (error) {
+            this.logger.error('Error during database disconnect', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Creates a MongoDB repository using a Mongoose model.
+     * 
+     * @param options - Options containing the Mongoose model
+     * @returns Repository instance with CRUD methods
+     * @throws Error if database type is not 'mongo'
+     * 
+     * @example
+     * ```typescript
+     * const usersRepo = db.createMongoRepository<User>({ model: UserModel });
+     * const user = await usersRepo.create({ name: 'John' });
+     * ```
+     */
+    createMongoRepository<T = unknown>(options: MongoRepositoryOptions): Repository<T> {
+        if (this.config.type !== 'mongo') {
+            throw new Error(
+                `Database type is "${this.config.type}". createMongoRepository can only be used when type === "mongo".`,
+            );
+        }
+
+        if (!this.mongoAdapter) {
+            this.mongoAdapter = new MongoAdapter(this.config as MongoDatabaseConfig);
+        }
+
+        return this.mongoAdapter.createRepository<T>(options);
+    }
+
+    /**
+     * Creates a PostgreSQL repository using a table configuration.
+     * 
+     * @param cfg - Configuration for the entity/table
+     * @returns Repository instance with CRUD methods
+     * @throws Error if database type is not 'postgres'
+     * 
+     * @example
+     * ```typescript
+     * const ordersRepo = db.createPostgresRepository<Order>({
+     *   table: 'orders',
+     *   primaryKey: 'id',
+     *   columns: ['id', 'user_id', 'total', 'created_at'],
+     * });
+     * ```
+     */
+    createPostgresRepository<T = unknown>(cfg: PostgresEntityConfig): Repository<T> {
+        if (this.config.type !== 'postgres') {
+            throw new Error(
+                `Database type is "${this.config.type}". createPostgresRepository can only be used when type === "postgres".`,
+            );
+        }
+
+        if (!this.postgresAdapter) {
+            this.postgresAdapter = new PostgresAdapter(this.config as PostgresDatabaseConfig);
+            this.postgresAdapter.connect();
+        }
+
+        return this.postgresAdapter.createRepository<T>(cfg);
+    }
+
+    /**
+     * Returns the underlying MongoDB adapter.
+     * Useful for advanced operations not covered by the repository interface.
+     * 
+     * @throws Error if database type is not 'mongo'
+     */
+    getMongoAdapter(): MongoAdapter {
+        if (this.config.type !== 'mongo') {
+            throw new Error('getMongoAdapter() is only available for MongoDB connections');
+        }
+
+        if (!this.mongoAdapter) {
+            this.mongoAdapter = new MongoAdapter(this.config as MongoDatabaseConfig);
+        }
+
+        return this.mongoAdapter;
+    }
+
+    /**
+     * Returns the underlying PostgreSQL adapter.
+     * Useful for advanced operations not covered by the repository interface.
+     * 
+     * @throws Error if database type is not 'postgres'
+     */
+    getPostgresAdapter(): PostgresAdapter {
+        if (this.config.type !== 'postgres') {
+            throw new Error('getPostgresAdapter() is only available for PostgreSQL connections');
+        }
+
+        if (!this.postgresAdapter) {
+            this.postgresAdapter = new PostgresAdapter(this.config as PostgresDatabaseConfig);
+        }
+
+        return this.postgresAdapter;
+    }
+}

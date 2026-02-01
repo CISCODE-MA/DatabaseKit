@@ -1,0 +1,177 @@
+# =============================================================================
+# DatabaseKit .gitignore - Security & Development
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Build Output
+# -----------------------------------------------------------------------------
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# -----------------------------------------------------------------------------
+# Dependencies
+# -----------------------------------------------------------------------------
+node_modules/
+jspm_packages/
+web_modules/
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# -----------------------------------------------------------------------------
+# Security - CRITICAL: Never commit these
+# -----------------------------------------------------------------------------
+
+# Environment files (may contain secrets)
+.env
+.env.*
+!.env.example
+*.env
+.envrc
+
+# Credentials and keys
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.secret
+*.secrets
+credentials.json
+secrets.json
+service-account*.json
+
+# AWS
+.aws/
+aws-credentials*
+
+# Azure
+.azure/
+azure-credentials*
+
+# Google Cloud
+.gcloud/
+gcloud-credentials*
+*-sa-key.json
+
+# npm tokens
+.npmrc
+!.npmrc.example
+
+# SSH keys
+id_rsa*
+id_ed25519*
+id_ecdsa*
+*.ppk
+
+# -----------------------------------------------------------------------------
+# Logs
+# -----------------------------------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# -----------------------------------------------------------------------------
+# Testing & Coverage
+# -----------------------------------------------------------------------------
+coverage/
+.nyc_output/
+*.lcov
+.jest/
+test-results/
+junit.xml
+
+# -----------------------------------------------------------------------------
+# IDE & Editors
+# -----------------------------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+.project
+.classpath
+.settings/
+*.iml
+
+# -----------------------------------------------------------------------------
+# OS Files
+# -----------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# -----------------------------------------------------------------------------
+# Temporary & Cache
+# -----------------------------------------------------------------------------
+tmp/
+temp/
+*.tmp
+*.temp
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+*.tgz
+
+# -----------------------------------------------------------------------------
+# Runtime
+# -----------------------------------------------------------------------------
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# -----------------------------------------------------------------------------
+# Framework Specific
+# -----------------------------------------------------------------------------
+
+# Next.js
+.next/
+out/
+
+# Nuxt.js
+.nuxt/
+
+# Gatsby
+.cache/
+public/
+
+# Vue
+.vuepress/dist/
+
+# Serverless
+.serverless/
+
+# FuseBox
+.fusebox/
+
+# DynamoDB Local
+.dynamodb/
+
+# TernJS
+.tern-port
+
+# -----------------------------------------------------------------------------
+# Diagnostic & Debug
+# -----------------------------------------------------------------------------
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
