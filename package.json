@@ -28,7 +28,7 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "prepublishOnly": "npm run clean && npm run build",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "engines": {
     "node": ">=18"
