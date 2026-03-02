@@ -19,16 +19,17 @@
     "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
     "build:watch": "tsc -w -p tsconfig.json",
     "clean": "rm -rf dist coverage",
-    "lint": "eslint 'src/**/*.ts'",
-    "lint:fix": "eslint 'src/**/*.ts' --fix",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "prepublishOnly": "npm run clean && npm run build",
-    "prepare": "husky || true"
+    "verify": "npm run lint && npm run typecheck && npm run test:cov",
+    "prepublishOnly": "npm run verify && npm run build",
+    "prepare": "husky install"
   },
   "engines": {
     "node": ">=18"
@@ -94,9 +95,9 @@
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
-      "eslint -c eslint.config.mjs --fix",
+      "eslint --fix",
       "prettier --write"
     ],
-    "*.{json,md,css}": "prettier --write"
+    "*.{json,md,yaml,yml}": "prettier --write"
   }
 }
