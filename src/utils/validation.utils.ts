@@ -6,37 +6,39 @@
 
 /**
  * Validates that a value is a valid MongoDB ObjectId string.
- * 
+ *
  * @param id - The string to validate
  * @returns True if valid ObjectId format
  */
 export function isValidMongoId(id: string): boolean {
-  if (!id || typeof id !== 'string') return false;
+  if (!id || typeof id !== "string") return false;
   return /^[a-f\d]{24}$/i.test(id);
 }
 
 /**
  * Validates that a value is a valid UUID (v4).
- * 
+ *
  * @param id - The string to validate
  * @returns True if valid UUID format
  */
 export function isValidUuid(id: string): boolean {
-  if (!id || typeof id !== 'string') return false;
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+  if (!id || typeof id !== "string") return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    id,
+  );
 }
 
 /**
  * Validates that a value is a positive integer.
- * 
+ *
  * @param value - The value to validate
  * @returns True if positive integer
  */
 export function isPositiveInteger(value: unknown): boolean {
-  if (typeof value === 'number') {
+  if (typeof value === "number") {
     return Number.isInteger(value) && value > 0;
   }
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const parsed = parseInt(value, 10);
     return !isNaN(parsed) && parsed > 0 && String(parsed) === value;
   }
@@ -45,7 +47,7 @@ export function isPositiveInteger(value: unknown): boolean {
 
 /**
  * Sanitizes a filter object by removing undefined and null values.
- * 
+ *
  * @param filter - The filter object to sanitize
  * @returns Sanitized filter object
  */
@@ -65,7 +67,7 @@ export function sanitizeFilter<T extends Record<string, unknown>>(
 
 /**
  * Validates that all required fields are present in an object.
- * 
+ *
  * @param obj - The object to validate
  * @param requiredFields - Array of required field names
  * @returns Object with isValid boolean and missing fields array
@@ -77,7 +79,7 @@ export function validateRequiredFields(
   const missing: string[] = [];
 
   for (const field of requiredFields) {
-    if (obj[field] === undefined || obj[field] === null || obj[field] === '') {
+    if (obj[field] === undefined || obj[field] === null || obj[field] === "") {
       missing.push(field);
     }
   }
@@ -91,7 +93,7 @@ export function validateRequiredFields(
 /**
  * Extracts only allowed fields from an object.
  * Useful for preventing mass assignment vulnerabilities.
- * 
+ *
  * @param obj - The source object
  * @param allowedFields - Array of allowed field names
  * @returns New object with only allowed fields
@@ -113,7 +115,7 @@ export function pickFields<T extends Record<string, unknown>>(
 
 /**
  * Omits specified fields from an object.
- * 
+ *
  * @param obj - The source object
  * @param fieldsToOmit - Array of field names to omit
  * @returns New object without the omitted fields

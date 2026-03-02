@@ -2,10 +2,10 @@
 
 /**
  * @ciscode/database-kit
- * 
+ *
  * A NestJS-friendly, OOP-style database library providing a unified
  * repository API for MongoDB and PostgreSQL.
- * 
+ *
  * @packageDocumentation
  */
 
@@ -17,105 +17,113 @@
 // Module (Primary export)
 // -----------------------------------------------------------------------------
 
-export { DatabaseKitModule } from './database-kit.module';
+export { DatabaseKitModule } from "./database-kit.module";
 
 // -----------------------------------------------------------------------------
 // Services (For direct injection if needed)
 // -----------------------------------------------------------------------------
 
-export { DatabaseService } from './services/database.service';
-export { LoggerService } from './services/logger.service';
+export { DatabaseService } from "./services/database.service";
+export { LoggerService } from "./services/logger.service";
 
 // -----------------------------------------------------------------------------
 // Decorators (For dependency injection)
 // -----------------------------------------------------------------------------
 
-export { InjectDatabase, InjectDatabaseByToken } from './middleware/database.decorators';
+export {
+  InjectDatabase,
+  InjectDatabaseByToken,
+} from "./middleware/database.decorators";
 
 // -----------------------------------------------------------------------------
 // Filters (For global exception handling)
 // -----------------------------------------------------------------------------
 
-export { DatabaseExceptionFilter } from './filters/database-exception.filter';
+export { DatabaseExceptionFilter } from "./filters/database-exception.filter";
 
 // -----------------------------------------------------------------------------
 // Configuration Helpers (For advanced configuration)
 // -----------------------------------------------------------------------------
 
-export { DatabaseConfigHelper } from './config/database.config';
-export { DATABASE_TOKEN, DATABASE_OPTIONS_TOKEN, ENV_KEYS, DEFAULTS } from './config/database.constants';
+export { DatabaseConfigHelper } from "./config/database.config";
+export {
+  DATABASE_TOKEN,
+  DATABASE_OPTIONS_TOKEN,
+  ENV_KEYS,
+  DEFAULTS,
+} from "./config/database.constants";
 
 // -----------------------------------------------------------------------------
 // Contracts (Types and Interfaces for consumers)
 // -----------------------------------------------------------------------------
 
 export {
-    // Database types
-    DatabaseType,
-    DatabaseConfig,
-    MongoDatabaseConfig,
-    PostgresDatabaseConfig,
+  // Database types
+  DatabaseType,
+  DatabaseConfig,
+  MongoDatabaseConfig,
+  PostgresDatabaseConfig,
 
-    // Pool configuration
-    PoolConfig,
+  // Pool configuration
+  PoolConfig,
 
-    // Module configuration
-    DatabaseKitModuleOptions,
-    DatabaseKitModuleAsyncOptions,
-    InjectionToken,
-    OptionalFactoryDependency,
+  // Module configuration
+  DatabaseKitModuleOptions,
+  DatabaseKitModuleAsyncOptions,
+  InjectionToken,
+  OptionalFactoryDependency,
 
-    // Repository interface (main CRUD API)
-    Repository,
+  // Repository interface (main CRUD API)
+  Repository,
 
-    // Pagination types
-    PageResult,
-    PageOptions,
+  // Pagination types
+  PageResult,
+  PageOptions,
 
-    // Transaction types
-    TransactionIsolationLevel,
-    TransactionOptions,
-    TransactionContext,
-    MongoTransactionContext,
-    PostgresTransactionContext,
-    TransactionCallback,
+  // Transaction types
+  TransactionIsolationLevel,
+  TransactionOptions,
+  TransactionContext,
+  MongoTransactionContext,
+  PostgresTransactionContext,
+  TransactionCallback,
 
-    // Health check types
-    HealthCheckResult,
+  // Health check types
+  HealthCheckResult,
 
-    // Event hooks
-    HookContext,
-    RepositoryHooks,
+  // Event hooks
+  HookContext,
+  RepositoryHooks,
 
-    // Repository options
-    MongoRepositoryOptions,
-    PostgresEntityConfig,
+  // Repository options
+  MongoRepositoryOptions,
+  PostgresEntityConfig,
 
-    // Constants
-    DATABASE_KIT_CONSTANTS,
-} from './contracts/database.contracts';
+  // Constants
+  DATABASE_KIT_CONSTANTS,
+} from "./contracts/database.contracts";
 
 // -----------------------------------------------------------------------------
 // Utilities (For common operations)
 // -----------------------------------------------------------------------------
 
 export {
-    normalizePaginationOptions,
-    calculatePagination,
-    createPageResult,
-    parseSortString,
-    calculateOffset,
-} from './utils/pagination.utils';
+  normalizePaginationOptions,
+  calculatePagination,
+  createPageResult,
+  parseSortString,
+  calculateOffset,
+} from "./utils/pagination.utils";
 
 export {
-    isValidMongoId,
-    isValidUuid,
-    isPositiveInteger,
-    sanitizeFilter,
-    validateRequiredFields,
-    pickFields,
-    omitFields,
-} from './utils/validation.utils';
+  isValidMongoId,
+  isValidUuid,
+  isPositiveInteger,
+  sanitizeFilter,
+  validateRequiredFields,
+  pickFields,
+  omitFields,
+} from "./utils/validation.utils";
 
 // =============================================================================
 // NOT EXPORTED (Internal implementation details)
@@ -124,4 +132,3 @@ export {
 // ❌ MongoAdapter - Internal adapter, use DatabaseService instead
 // ❌ PostgresAdapter - Internal adapter, use DatabaseService instead
 // ❌ Internal helper functions
-

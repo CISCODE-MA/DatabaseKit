@@ -1,6 +1,7 @@
 // src/utils/pagination.utils.ts
 
-import { PageOptions, PageResult, DATABASE_KIT_CONSTANTS } from '../contracts/database.contracts';
+import type { PageOptions, PageResult } from "../contracts/database.contracts";
+import { DATABASE_KIT_CONSTANTS } from "../contracts/database.contracts";
 
 /**
  * Utility functions for pagination operations.
@@ -8,7 +9,7 @@ import { PageOptions, PageResult, DATABASE_KIT_CONSTANTS } from '../contracts/da
 
 /**
  * Normalizes pagination options with defaults and constraints.
- * 
+ *
  * @param options - The input pagination options
  * @returns Normalized options with validated values
  */
@@ -37,7 +38,7 @@ export function normalizePaginationOptions<T = Record<string, unknown>>(
 
 /**
  * Calculates pagination metadata from total count.
- * 
+ *
  * @param total - Total number of items
  * @param page - Current page number
  * @param limit - Items per page
@@ -57,7 +58,7 @@ export function calculatePagination(
 
 /**
  * Creates a page result object.
- * 
+ *
  * @param data - Array of items for the current page
  * @param page - Current page number
  * @param limit - Items per page
@@ -84,10 +85,10 @@ export function createPageResult<T>(
 /**
  * Parses a sort string into an object.
  * Supports formats like "-createdAt,name" or "+updatedAt,-title"
- * 
+ *
  * @param sortString - Comma-separated sort fields with optional +/- prefix
  * @returns Object with field names as keys and 'asc' | 'desc' as values
- * 
+ *
  * @example
  * ```typescript
  * parseSortString('-createdAt,name');
@@ -96,20 +97,23 @@ export function createPageResult<T>(
  */
 export function parseSortString(
   sortString: string,
-): Record<string, 'asc' | 'desc'> {
-  const result: Record<string, 'asc' | 'desc'> = {};
+): Record<string, "asc" | "desc"> {
+  const result: Record<string, "asc" | "desc"> = {};
 
   if (!sortString) return result;
 
-  const fields = sortString.split(',').map((f) => f.trim()).filter(Boolean);
+  const fields = sortString
+    .split(",")
+    .map((f) => f.trim())
+    .filter(Boolean);
 
   for (const field of fields) {
-    if (field.startsWith('-')) {
-      result[field.slice(1)] = 'desc';
-    } else if (field.startsWith('+')) {
-      result[field.slice(1)] = 'asc';
+    if (field.startsWith("-")) {
+      result[field.slice(1)] = "desc";
+    } else if (field.startsWith("+")) {
+      result[field.slice(1)] = "asc";
     } else {
-      result[field] = 'asc';
+      result[field] = "asc";
     }
   }
 
@@ -118,7 +122,7 @@ export function parseSortString(
 
 /**
  * Calculates the offset for a given page and limit.
- * 
+ *
  * @param page - Page number (1-indexed)
  * @param limit - Items per page
  * @returns Offset value for database query

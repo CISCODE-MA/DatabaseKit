@@ -2,9 +2,7 @@
   "compilerOptions": {
     "target": "ES2019",
     "module": "commonjs",
-    "lib": [
-      "ES2019"
-    ],
+    "lib": ["ES2019"],
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
@@ -25,36 +23,15 @@
     "emitDecoratorMetadata": true,
     "baseUrl": ".",
     "paths": {
-      "@adapters/*": [
-        "src/adapters/*"
-      ],
-      "@config/*": [
-        "src/config/*"
-      ],
-      "@contracts/*": [
-        "src/contracts/*"
-      ],
-      "@filters/*": [
-        "src/filters/*"
-      ],
-      "@middleware/*": [
-        "src/middleware/*"
-      ],
-      "@services/*": [
-        "src/services/*"
-      ],
-      "@utils/*": [
-        "src/utils/*"
-      ]
+      "@adapters/*": ["src/adapters/*"],
+      "@config/*": ["src/config/*"],
+      "@contracts/*": ["src/contracts/*"],
+      "@filters/*": ["src/filters/*"],
+      "@middleware/*": ["src/middleware/*"],
+      "@services/*": ["src/services/*"],
+      "@utils/*": ["src/utils/*"]
     }
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "**/*.spec.ts",
-    "**/*.test.ts"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
 }
