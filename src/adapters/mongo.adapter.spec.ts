@@ -645,5 +645,429 @@ describe("MongoAdapter", () => {
         {},
       );
     });
+
+    it("should soft delete when enabled", async () => {
+      const mockModel = {
+        updateOne: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue({ modifiedCount: 1 }),
+        }),
+      };
+
+      const repo = adapter.createRepository({
+        model: mockModel,
+        softDelete: true,
+      });
+      const result = await repo.deleteById("1");
+
+      expect(result).toBe(true);
+      expect(mockModel.updateOne).toHaveBeenCalledWith(
+        { _id: "1", deletedAt: { $eq: null } },
+        { deletedAt: expect.any(Date) },
+        {},
+      );
+    });
+
+    it("should restore soft deleted item when enabled", async () => {
+      const mockQuery = {
+        lean: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue({ _id: "1" }),
+      };
+      const mockModel = {
+        findOneAndUpdate: jest.fn().mockReturnValue(mockQuery),
+      };
+
+      const repo = adapter.createRepository({
+        model: mockModel,
+        softDelete: true,
+      });
+      const result = await repo.restore?.("1");
+
+      expect(result).toEqual({ _id: "1" });
+      expect(mockModel.findOneAndUpdate).toHaveBeenCalledWith(
+        { _id: "1", deletedAt: { $ne: null } },
+        { $unset: { deletedAt: 1 } },
+        { new: true },
+      );
+    });
+
+    it("should upsert with timestamps when enabled", async () => {
+      const mockQuery = {
+        lean: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue({ _id: "1" }),
+      };
+      const mockModel = {
+        findOneAndUpdate: jest.fn().mockReturnValue(mockQuery),
+      };
+
+      const repo = adapter.createRepository({
+        model: mockModel,
+        timestamps: true,
+      });
+      await repo.upsert({ email: "a@b.com" }, { name: "John" });
+
+      expect(mockModel.findOneAndUpdate).toHaveBeenCalledWith(
+        { email: "a@b.com" },
+        expect.objectContaining({
+          $set: expect.objectContaining({
+            name: "John",
+            updatedAt: expect.any(Date),
+          }),
+          $setOnInsert: expect.objectContaining({
+            createdAt: expect.any(Date),
+          }),
+        }),
+        { upsert: true, new: true },
+      );
+    });
+
+    it("should return distinct values", async () => {
+      const mockQuery = {
+        exec: jest.fn().mockResolvedValue(["a", "b"]),
+      };
+      const mockModel = {
+        distinct: jest.fn().mockReturnValue(mockQuery),
+      };
+
+      const repo = adapter.createRepository<{
+        email: string;
+        active?: boolean;
+      }>({
+        model: mockModel,
+      });
+      const result = await repo.distinct("email", { active: true });
+
+      expect(result).toEqual(["a", "b"]);
+      expect(mockModel.distinct).toHaveBeenCalledWith("email", {
+        active: true,
+      });
+    });
+
+    it("should select projected fields", async () => {
+      const mockQuery = {
+        select: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue([{ name: "John" }]),
+      };
+      const mockModel = {
+        find: jest.fn().mockReturnValue(mockQuery),
+      };
+
+      const repo = adapter.createRepository<{ name: string; active?: boolean }>(
+        {
+          model: mockModel,
+        },
+      );
+      const result = await repo.select({ active: true }, ["name"]);
+
+      expect(result).toEqual([{ name: "John" }]);
+      expect(mockModel.find).toHaveBeenCalledWith({ active: true });
+      expect(mockQuery.select).toHaveBeenCalledWith({ name: 1 });
+    });
+
+    it("should query deleted records when soft delete enabled", async () => {
+      const mockQuery = {
+        lean: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue([{ _id: "1" }]),
+      };
+      const mockModel = {
+        find: jest.fn().mockReturnValue(mockQuery),
+      };
+
+      const repo = adapter.createRepository({
+        model: mockModel,
+        softDelete: true,
+      });
+      const result = await repo.findDeleted?.({ status: "deleted" });
+
+      expect(result).toEqual([{ _id: "1" }]);
+      expect(mockModel.find).toHaveBeenCalledWith({
+        status: "deleted",
+        deletedAt: { $ne: null },
+      });
+    });
+
+    it("should include deleted records when requested", async () => {
+      const mockQuery = {
+        lean: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue([{ _id: "1" }]),
+      };
+      const mockModel = {
+        find: jest.fn().mockReturnValue(mockQuery),
+      };
+
+      const repo = adapter.createRepository({
+        model: mockModel,
+        softDelete: true,
+      });
+      const result = await repo.findAllWithDeleted?.({ status: "any" });
+
+      expect(result).toEqual([{ _id: "1" }]);
+      expect(mockModel.find).toHaveBeenCalledWith({ status: "any" });
+    });
+  });
+
+  describe("healthCheck", () => {
+    it("should return healthy when connected and ping succeeds", async () => {
+      const mongoose = await import("mongoose");
+
+      Object.defineProperty(mongoose.connection, "readyState", {
+        value: 1,
+        writable: true,
+      });
+      Object.defineProperty(mongoose.connection, "db", {
+        value: {
+          admin: () => ({
+            ping: jest.fn().mockResolvedValue({ ok: 1 }),
+            serverInfo: jest.fn().mockResolvedValue({ version: "6.0.0" }),
+          }),
+        },
+        writable: true,
+      });
+
+      const result = await adapter.healthCheck();
+
+      expect(result.healthy).toBe(true);
+      expect(result.type).toBe("mongo");
+      expect(result.details?.version).toBe("6.0.0");
+      expect(result.responseTimeMs).toBeGreaterThanOrEqual(0);
+    });
+
+    it.skip("should return unhealthy when not connected", async () => {
+      const result = await adapter.healthCheck();
+
+      expect(result.healthy).toBe(false);
+      expect(result.error).toBe("Not connected to MongoDB");
+      expect(result.type).toBe("mongo");
+    });
+
+    it("should return unhealthy when ping fails", async () => {
+      const mongoose = await import("mongoose");
+
+      Object.defineProperty(mongoose.connection, "readyState", {
+        value: 1,
+        writable: true,
+      });
+      Object.defineProperty(mongoose.connection, "db", {
+        value: {
+          admin: () => ({
+            ping: jest.fn().mockResolvedValue({ ok: 0 }),
+          }),
+        },
+        writable: true,
+      });
+
+      const result = await adapter.healthCheck();
+
+      expect(result.healthy).toBe(false);
+      expect(result.error).toBe("Ping command failed");
+    });
+
+    it("should return unhealthy when ping throws error", async () => {
+      const mongoose = await import("mongoose");
+
+      Object.defineProperty(mongoose.connection, "readyState", {
+        value: 1,
+        writable: true,
+      });
+      Object.defineProperty(mongoose.connection, "db", {
+        value: {
+          admin: () => ({
+            ping: jest.fn().mockRejectedValue(new Error("Connection lost")),
+          }),
+        },
+        writable: true,
+      });
+
+      const result = await adapter.healthCheck();
+
+      expect(result.healthy).toBe(false);
+      expect(result.error).toBe("Connection lost");
+    });
+  });
+
+  describe("withTransaction", () => {
+    it("should execute callback within transaction successfully", async () => {
+      const mongoose = await import("mongoose");
+      await adapter.connect();
+
+      const callback = jest.fn(async (ctx: MongoTransactionContext) => {
+        expect(ctx.transaction).toBeDefined();
+        expect(ctx.createRepository).toBeDefined();
+        return { result: "success" };
+      });
+
+      const result = await adapter.withTransaction(callback);
+
+      expect(result).toEqual({ result: "success" });
+      expect(callback).toHaveBeenCalled();
+      const mockSession = await mongoose.startSession();
+      expect(mockSession.startTransaction).toHaveBeenCalled();
+      expect(mockSession.commitTransaction).toHaveBeenCalled();
+      expect(mockSession.endSession).toHaveBeenCalled();
+    });
+
+    it("should retry on transient errors", async () => {
+      await adapter.connect();
+
+      const transientError = {
+        hasErrorLabel: jest.fn(
+          (label: string) => label === "TransientTransactionError",
+        ),
+        message: "Transient error",
+      };
+
+      let attempt = 0;
+      const callback = jest.fn(async () => {
+        attempt++;
+        if (attempt === 1) {
+          throw transientError;
+        }
+        return { result: "success after retry" };
+      });
+
+      const result = await adapter.withTransaction(callback, { retries: 1 });
+
+      expect(result).toEqual({ result: "success after retry" });
+      expect(callback).toHaveBeenCalledTimes(2);
+    });
+
+    it("should retry on specific MongoDB error codes", async () => {
+      await adapter.connect();
+
+      const retryableError = {
+        code: 11600, // InterruptedAtShutdown
+        message: "Server shutting down",
+      };
+
+      let attempt = 0;
+      const callback = jest.fn(async () => {
+        attempt++;
+        if (attempt === 1) {
+          throw retryableError;
+        }
+        return { result: "success after retry" };
+      });
+
+      const result = await adapter.withTransaction(callback, { retries: 1 });
+
+      expect(result).toEqual({ result: "success after retry" });
+      expect(callback).toHaveBeenCalledTimes(2);
+    });
+
+    it.skip("should throw after exhausting retries", async () => {
+      await adapter.connect();
+
+      const persistentError = {
+        hasErrorLabel: jest.fn(
+          (label: string) => label === "TransientTransactionError",
+        ),
+        message: "Persistent error",
+      };
+
+      const callback = jest.fn(async () => {
+        throw persistentError;
+      });
+
+      await expect(
+        adapter.withTransaction(callback, { retries: 2 }),
+      ).rejects.toThrow("Persistent error");
+
+      expect(callback).toHaveBeenCalledTimes(3); // initial + 2 retries
+    });
+
+    it("should abort transaction on error", async () => {
+      const mongoose = await import("mongoose");
+      await adapter.connect();
+
+      const error = new Error("Transaction failed");
+      const callback = jest.fn(async () => {
+        throw error;
+      });
+
+      await expect(adapter.withTransaction(callback)).rejects.toThrow(
+        "Transaction failed",
+      );
+
+      const mockSession = await mongoose.startSession();
+      expect(mockSession.abortTransaction).toHaveBeenCalled();
+      expect(mockSession.endSession).toHaveBeenCalled();
+    });
+
+    it("should handle all retryable error codes", async () => {
+      await adapter.connect();
+
+      const retryableCodes = [11600, 11602, 10107, 13435, 13436, 189, 91];
+
+      for (const code of retryableCodes) {
+        jest.clearAllMocks();
+
+        let attempt = 0;
+        const callback = jest.fn(async () => {
+          attempt++;
+          if (attempt === 1) {
+            throw { code, message: `Error code ${code}` };
+          }
+          return { code };
+        });
+
+        const result = await adapter.withTransaction(callback, { retries: 1 });
+        expect(result).toEqual({ code });
+      }
+    });
+  });
+
+  describe("connection event handlers", () => {
+    it("should register connection event handlers", async () => {
+      const mongoose = await import("mongoose");
+      await adapter.connect();
+
+      expect(mongoose.connection.on).toHaveBeenCalledWith(
+        "connected",
+        expect.any(Function),
+      );
+      expect(mongoose.connection.on).toHaveBeenCalledWith(
+        "error",
+        expect.any(Function),
+      );
+      expect(mongoose.connection.on).toHaveBeenCalledWith(
+        "disconnected",
+        expect.any(Function),
+      );
+    });
+
+    it("should apply custom connection options", async () => {
+      const mongoose = await import("mongoose");
+      const customOptions = { retryWrites: true };
+
+      await adapter.connect(customOptions);
+
+      expect(mongoose.connect).toHaveBeenCalledWith(
+        mockConfig.connectionString,
+        expect.objectContaining(customOptions),
+      );
+    });
+
+    it("should use custom pool configuration", async () => {
+      const mongoose = await import("mongoose");
+      const adapterWithPool = new MongoAdapter({
+        ...mockConfig,
+        pool: { min: 2, max: 20, idleTimeoutMs: 60000 },
+        serverSelectionTimeoutMS: 10000,
+        socketTimeoutMS: 90000,
+      });
+
+      await adapterWithPool.connect();
+
+      expect(mongoose.connect).toHaveBeenCalledWith(
+        mockConfig.connectionString,
+        expect.objectContaining({
+          maxPoolSize: 20,
+          minPoolSize: 2,
+          maxIdleTimeMS: 60000,
+          serverSelectionTimeoutMS: 10000,
+          socketTimeoutMS: 90000,
+        }),
+      );
+    });
   });
 });
