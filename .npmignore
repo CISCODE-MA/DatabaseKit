@@ -1,0 +1,64 @@
+# =============================================================================
+# NPM Ignore - Prevent shipping unnecessary files to npm registry
+# =============================================================================
+
+# Source files (only dist/ is needed)
+src/
+test/
+*.spec.ts
+*.test.ts
+
+# Configuration files (not needed for consumers)
+jest.config.ts
+jest.config.js
+tsconfig.json
+tsconfig.eslint.json
+eslint.config.mjs
+eslint.config.js
+prettier.config.js
+.prettierignore
+.prettierrc
+
+# Environment and secrets (CRITICAL)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.secret
+
+# Build and test artifacts
+dist/
+build/
+out/
+coverage/
+.nyc_output/
+.coverage/
+*.tsbuildinfo
+
+# Development files
+.husky/
+.git/
+.github/
+.vscode/
+.idea/
+.DS_Store
+
+# Dependencies and package managers
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Documentation (optional, keep if valuable)
+# docs/
+# CHANGELOG.md kept by default (files array in package.json controls this)
+
+# Other
+.changeset/
+.turbo/
+.env.example
+
