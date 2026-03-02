@@ -1,6 +1,6 @@
 {
   "name": "@ciscode/database-kit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "A NestJS-friendly, OOP-style database library providing a unified repository API for MongoDB and PostgreSQL.",
   "main": "dist/index.js",
