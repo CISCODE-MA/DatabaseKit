@@ -10,7 +10,7 @@
 /**
  * Supported database types.
  */
-export type DatabaseType = "mongo" | "postgres";
+export type DatabaseType = 'mongo' | 'postgres';
 
 /**
  * Connection pool configuration options.
@@ -42,7 +42,7 @@ export interface DatabaseConfigBase {
  * MongoDB-specific configuration.
  */
 export interface MongoDatabaseConfig extends DatabaseConfigBase {
-  type: "mongo";
+  type: 'mongo';
   /** Server selection timeout in milliseconds (default: 5000) */
   serverSelectionTimeoutMS?: number;
   /** Socket timeout in milliseconds (default: 45000) */
@@ -53,7 +53,7 @@ export interface MongoDatabaseConfig extends DatabaseConfigBase {
  * PostgreSQL-specific configuration.
  */
 export interface PostgresDatabaseConfig extends DatabaseConfigBase {
-  type: "postgres";
+  type: 'postgres';
   /** Statement timeout in milliseconds (default: none) */
   statementTimeout?: number;
   /** Query timeout in milliseconds (default: none) */
@@ -77,7 +77,7 @@ export interface HookContext<T = unknown> {
   /** The entity data being operated on */
   data: T;
   /** The operation being performed */
-  operation: "create" | "update" | "delete" | "upsert";
+  operation: 'create' | 'update' | 'delete' | 'upsert';
   /** Whether this is a bulk operation */
   isBulk: boolean;
 }
@@ -162,7 +162,7 @@ export interface PageOptions<Filter = Record<string, unknown>> {
   /** Items per page (default: 10) */
   limit?: number;
   /** Sort order (string or object) */
-  sort?: string | Record<string, 1 | -1 | "asc" | "desc">;
+  sort?: string | Record<string, 1 | -1 | 'asc' | 'desc'>;
 }
 
 // -----------------------------
@@ -484,10 +484,10 @@ export interface DatabaseKitModuleAsyncOptions {
  * MongoDB doesn't support isolation levels in the same way.
  */
 export type TransactionIsolationLevel =
-  | "read uncommitted"
-  | "read committed"
-  | "repeatable read"
-  | "serializable";
+  | 'read uncommitted'
+  | 'read committed'
+  | 'repeatable read'
+  | 'serializable';
 
 /**
  * Options for transaction execution.

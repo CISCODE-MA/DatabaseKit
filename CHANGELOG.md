@@ -201,10 +201,10 @@ If you were using a pre-release version, follow these steps:
 
    ```typescript
    // Before
-   import { Database } from "@ciscode/database-kit/core/database";
+   import { Database } from '@ciscode/database-kit/core/database';
 
    // After
-   import { DatabaseService } from "@ciscode/database-kit";
+   import { DatabaseService } from '@ciscode/database-kit';
    ```
 
 2. **Update module configuration:**

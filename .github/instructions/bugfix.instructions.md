@@ -66,14 +66,14 @@ pool: { min: 2, max: 10 }
 // MongoDB - Is the filter format correct?
 {
   status: {
-    $eq: "active";
+    $eq: 'active';
   }
 }
 
 // PostgreSQL - Are operators translated?
 {
   status: {
-    eq: "active";
+    eq: 'active';
   }
 } // → .where('status', '=', 'active')
 
@@ -92,7 +92,7 @@ if (this.softDelete) {
 ```typescript
 // Is session/transaction passed to all operations?
 await model.create([data], { session }); // MongoDB
-await trx("table").insert(data); // PostgreSQL
+await trx('table').insert(data); // PostgreSQL
 
 // Is rollback called on error?
 try {
@@ -149,10 +149,10 @@ await this.hooks.afterCreate(result);
 ### Step 1: Create Failing Test
 
 ```typescript
-describe("Bug #123: Description", () => {
-  it("should handle the edge case correctly", async () => {
+describe('Bug #123: Description', () => {
+  it('should handle the edge case correctly', async () => {
     // This test should FAIL initially
-    const result = await repo.findById("");
+    const result = await repo.findById('');
     expect(result).toBeNull(); // Currently throws
   });
 });
@@ -270,13 +270,13 @@ async findById(id: string): Promise<T | null> {
 
 ```typescript
 // BAD
-it.skip("should handle edge case", () => {
+it.skip('should handle edge case', () => {
   // "I'll fix this later"
 });
 
 // GOOD
-it("should handle edge case", async () => {
-  expect(await repo.findById("")).toBeNull();
+it('should handle edge case', async () => {
+  expect(await repo.findById('')).toBeNull();
 });
 ```
 
@@ -307,14 +307,14 @@ async findById(id: string): Promise<T | null> {
 
 ```typescript
 // In test
-it("debug test", async () => {
+it('debug test', async () => {
   // Check actual database state
   const allRecords = await repo.findAll({});
-  console.log("Current records:", allRecords);
+  console.log('Current records:', allRecords);
 
   // Check what query returns
-  const result = await repo.findById("123");
-  console.log("Query result:", result);
+  const result = await repo.findById('123');
+  console.log('Query result:', result);
 });
 ```
 
@@ -322,11 +322,11 @@ it("debug test", async () => {
 
 ```typescript
 // MongoDB - Enable Mongoose debug
-mongoose.set("debug", true);
+mongoose.set('debug', true);
 
 // PostgreSQL - Knex debug
-const knex = require("knex")({
-  client: "pg",
+const knex = require('knex')({
+  client: 'pg',
   debug: true,
   // ...
 });

@@ -1,7 +1,7 @@
-import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 
-import { MongoAdapter } from "../adapters/mongo.adapter";
-import { PostgresAdapter } from "../adapters/postgres.adapter";
+import { MongoAdapter } from '../adapters/mongo.adapter';
+import { PostgresAdapter } from '../adapters/postgres.adapter';
 import {
   DatabaseConfig,
   MongoDatabaseConfig,
@@ -14,7 +14,7 @@ import {
   TransactionOptions,
   TransactionCallback,
   HealthCheckResult,
-} from "../contracts/database.contracts";
+} from '../contracts/database.contracts';
 
 /**
  * Main database service that provides a unified interface
@@ -54,14 +54,14 @@ export class DatabaseService implements OnModuleDestroy {
    * Gracefully closes all database connections.
    */
   async onModuleDestroy(): Promise<void> {
-    this.logger.log("Cleaning up database connections...");
+    this.logger.log('Cleaning up database connections...');
     await this.disconnect();
   }
 
   /**
    * Returns the current database type.
    */
-  get type(): "mongo" | "postgres" {
+  get type(): 'mongo' | 'postgres' {
     return this.config.type;
   }
 
@@ -70,9 +70,9 @@ export class DatabaseService implements OnModuleDestroy {
    */
   isConnected(): boolean {
     switch (this.config.type) {
-      case "mongo":
+      case 'mongo':
         return this.mongoAdapter?.isConnected() ?? false;
-      case "postgres":
+      case 'postgres':
         return this.postgresAdapter?.isConnected() ?? false;
       default:
         return false;
@@ -85,25 +85,25 @@ export class DatabaseService implements OnModuleDestroy {
    */
   async connect(): Promise<void> {
     switch (this.config.type) {
-      case "mongo": {
+      case 'mongo': {
         if (!this.mongoAdapter) {
           this.mongoAdapter = new MongoAdapter(
             this.config as MongoDatabaseConfig,
           );
         }
         await this.mongoAdapter.connect();
-        this.logger.log("MongoDB connection established");
+        this.logger.log('MongoDB connection established');
         break;
       }
 
-      case "postgres": {
+      case 'postgres': {
         if (!this.postgresAdapter) {
           this.postgresAdapter = new PostgresAdapter(
             this.config as PostgresDatabaseConfig,
           );
         }
         this.postgresAdapter.connect();
-        this.logger.log("PostgreSQL connection pool established");
+        this.logger.log('PostgreSQL connection pool established');
         break;
       }
 
@@ -132,9 +132,9 @@ export class DatabaseService implements OnModuleDestroy {
         this.postgresAdapter = undefined;
       }
 
-      this.logger.log("All database connections closed");
+      this.logger.log('All database connections closed');
     } catch (error) {
-      this.logger.error("Error during database disconnect", error);
+      this.logger.error('Error during database disconnect', error);
       throw error;
     }
   }
@@ -155,7 +155,7 @@ export class DatabaseService implements OnModuleDestroy {
   createMongoRepository<T = unknown>(
     options: MongoRepositoryOptions,
   ): Repository<T> {
-    if (this.config.type !== "mongo") {
+    if (this.config.type !== 'mongo') {
       throw new Error(
         `Database type is "${this.config.type}". createMongoRepository can only be used when type === "mongo".`,
       );
@@ -187,7 +187,7 @@ export class DatabaseService implements OnModuleDestroy {
   createPostgresRepository<T = unknown>(
     cfg: PostgresEntityConfig,
   ): Repository<T> {
-    if (this.config.type !== "postgres") {
+    if (this.config.type !== 'postgres') {
       throw new Error(
         `Database type is "${this.config.type}". createPostgresRepository can only be used when type === "postgres".`,
       );
@@ -210,9 +210,9 @@ export class DatabaseService implements OnModuleDestroy {
    * @throws Error if database type is not 'mongo'
    */
   getMongoAdapter(): MongoAdapter {
-    if (this.config.type !== "mongo") {
+    if (this.config.type !== 'mongo') {
       throw new Error(
-        "getMongoAdapter() is only available for MongoDB connections",
+        'getMongoAdapter() is only available for MongoDB connections',
       );
     }
 
@@ -230,9 +230,9 @@ export class DatabaseService implements OnModuleDestroy {
    * @throws Error if database type is not 'postgres'
    */
   getPostgresAdapter(): PostgresAdapter {
-    if (this.config.type !== "postgres") {
+    if (this.config.type !== 'postgres') {
       throw new Error(
-        "getPostgresAdapter() is only available for PostgreSQL connections",
+        'getPostgresAdapter() is only available for PostgreSQL connections',
       );
     }
 
@@ -269,7 +269,7 @@ export class DatabaseService implements OnModuleDestroy {
     callback: TransactionCallback<MongoTransactionContext, TResult>,
     options?: TransactionOptions,
   ): Promise<TResult> {
-    if (this.config.type !== "mongo") {
+    if (this.config.type !== 'mongo') {
       throw new Error(
         `Database type is "${this.config.type}". withMongoTransaction can only be used when type === "mongo".`,
       );
@@ -301,7 +301,7 @@ export class DatabaseService implements OnModuleDestroy {
     callback: TransactionCallback<PostgresTransactionContext, TResult>,
     options?: TransactionOptions,
   ): Promise<TResult> {
-    if (this.config.type !== "postgres") {
+    if (this.config.type !== 'postgres') {
       throw new Error(
         `Database type is "${this.config.type}". withPostgresTransaction can only be used when type === "postgres".`,
       );
@@ -336,12 +336,12 @@ export class DatabaseService implements OnModuleDestroy {
     options?: TransactionOptions,
   ): Promise<TResult> {
     switch (this.config.type) {
-      case "mongo":
+      case 'mongo':
         return this.withMongoTransaction(
           callback as TransactionCallback<MongoTransactionContext, TResult>,
           options,
         );
-      case "postgres":
+      case 'postgres':
         return this.withPostgresTransaction(
           callback as TransactionCallback<PostgresTransactionContext, TResult>,
           options,
@@ -376,11 +376,11 @@ export class DatabaseService implements OnModuleDestroy {
    */
   async healthCheck(): Promise<HealthCheckResult> {
     switch (this.config.type) {
-      case "mongo": {
+      case 'mongo': {
         const adapter = this.getMongoAdapter();
         return adapter.healthCheck();
       }
-      case "postgres": {
+      case 'postgres': {
         const adapter = this.getPostgresAdapter();
         return adapter.healthCheck();
       }

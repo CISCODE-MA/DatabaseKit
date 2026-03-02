@@ -95,12 +95,12 @@ class PostgresRepository<T> implements Repository<T> {
 
 ```typescript
 // src/adapters/mongo.adapter.spec.ts
-describe("newMethod", () => {
-  it("should perform expected behavior", async () => {
+describe('newMethod', () => {
+  it('should perform expected behavior', async () => {
     // Test implementation
   });
 
-  it("should handle edge cases", async () => {
+  it('should handle edge cases', async () => {
     // Edge case tests
   });
 });
@@ -113,7 +113,7 @@ describe("newMethod", () => {
 export {
   // ... existing exports
   NewReturnType, // If you added new types
-} from "./contracts/database.contracts";
+} from './contracts/database.contracts';
 ```
 
 ---
@@ -273,20 +273,20 @@ export function newUtility(input: string): string {
 
 ```typescript
 // src/index.ts
-export { newUtility } from "./utils/new.utils";
+export { newUtility } from './utils/new.utils';
 ```
 
 ### Step 3: Add Tests
 
 ```typescript
 // src/utils/new.utils.spec.ts
-describe("newUtility", () => {
-  it("should transform input correctly", () => {
-    expect(newUtility("input")).toBe("expected");
+describe('newUtility', () => {
+  it('should transform input correctly', () => {
+    expect(newUtility('input')).toBe('expected');
   });
 
-  it("should handle edge cases", () => {
-    expect(newUtility("")).toBe("");
+  it('should handle edge cases', () => {
+    expect(newUtility('')).toBe('');
     expect(newUtility(null as any)).toBeNull();
   });
 });

@@ -1,7 +1,7 @@
 // src/utils/pagination.utils.ts
 
-import type { PageOptions, PageResult } from "../contracts/database.contracts";
-import { DATABASE_KIT_CONSTANTS } from "../contracts/database.contracts";
+import type { PageOptions, PageResult } from '../contracts/database.contracts';
+import { DATABASE_KIT_CONSTANTS } from '../contracts/database.contracts';
 
 /**
  * Utility functions for pagination operations.
@@ -97,23 +97,23 @@ export function createPageResult<T>(
  */
 export function parseSortString(
   sortString: string,
-): Record<string, "asc" | "desc"> {
-  const result: Record<string, "asc" | "desc"> = {};
+): Record<string, 'asc' | 'desc'> {
+  const result: Record<string, 'asc' | 'desc'> = {};
 
   if (!sortString) return result;
 
   const fields = sortString
-    .split(",")
+    .split(',')
     .map((f) => f.trim())
     .filter(Boolean);
 
   for (const field of fields) {
-    if (field.startsWith("-")) {
-      result[field.slice(1)] = "desc";
-    } else if (field.startsWith("+")) {
-      result[field.slice(1)] = "asc";
+    if (field.startsWith('-')) {
+      result[field.slice(1)] = 'desc';
+    } else if (field.startsWith('+')) {
+      result[field.slice(1)] = 'asc';
     } else {
-      result[field] = "asc";
+      result[field] = 'asc';
     }
   }
 

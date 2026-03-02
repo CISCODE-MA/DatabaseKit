@@ -1,5 +1,5 @@
-import { Injectable, Logger } from "@nestjs/common";
-import knex, { Knex } from "knex";
+import { Injectable, Logger } from '@nestjs/common';
+import knex, { Knex } from 'knex';
 
 import {
   PostgresDatabaseConfig,
@@ -12,7 +12,7 @@ import {
   TransactionCallback,
   HealthCheckResult,
   DATABASE_KIT_CONSTANTS,
-} from "../contracts/database.contracts";
+} from '../contracts/database.contracts';
 
 /**
  * PostgreSQL adapter for DatabaseKit.
@@ -44,7 +44,7 @@ export class PostgresAdapter {
    */
   connect(overrides: Knex.Config = {}): Knex {
     if (!this.knexInstance) {
-      this.logger.log("Creating PostgreSQL connection pool...");
+      this.logger.log('Creating PostgreSQL connection pool...');
 
       // Apply pool configuration from config
       const poolConfig = this.config.pool || {};
@@ -56,14 +56,14 @@ export class PostgresAdapter {
       };
 
       this.knexInstance = knex({
-        client: "pg",
+        client: 'pg',
         connection: this.config.connectionString,
         pool,
         acquireConnectionTimeout: poolConfig.acquireTimeoutMs ?? 60000,
         ...overrides,
       });
 
-      this.logger.log("PostgreSQL connection pool created");
+      this.logger.log('PostgreSQL connection pool created');
     }
 
     return this.knexInstance;
@@ -76,7 +76,7 @@ export class PostgresAdapter {
     if (this.knexInstance) {
       await this.knexInstance.destroy();
       this.knexInstance = undefined;
-      this.logger.log("PostgreSQL connection pool destroyed");
+      this.logger.log('PostgreSQL connection pool destroyed');
     }
   }
 
@@ -86,7 +86,7 @@ export class PostgresAdapter {
    */
   getKnex(): Knex {
     if (!this.knexInstance) {
-      throw new Error("PostgreSQL not connected. Call connect() first.");
+      throw new Error('PostgreSQL not connected. Call connect() first.');
     }
     return this.knexInstance;
   }
@@ -120,14 +120,14 @@ export class PostgresAdapter {
         return {
           healthy: false,
           responseTimeMs: Date.now() - startTime,
-          type: "postgres",
-          error: "Not connected to PostgreSQL",
+          type: 'postgres',
+          error: 'Not connected to PostgreSQL',
         };
       }
 
       // Execute simple query to verify connection
       const result = await this.knexInstance.raw(
-        "SELECT version(), current_database()",
+        'SELECT version(), current_database()',
       );
       const row = result.rows?.[0];
 
@@ -141,9 +141,9 @@ export class PostgresAdapter {
       return {
         healthy: true,
         responseTimeMs: Date.now() - startTime,
-        type: "postgres",
+        type: 'postgres',
         details: {
-          version: row?.version?.split(" ").slice(0, 2).join(" "),
+          version: row?.version?.split(' ').slice(0, 2).join(' '),
           activeConnections: pool?.numUsed?.() ?? 0,
           poolSize: (pool?.numUsed?.() ?? 0) + (pool?.numFree?.() ?? 0),
         },
@@ -152,8 +152,8 @@ export class PostgresAdapter {
       return {
         healthy: false,
         responseTimeMs: Date.now() - startTime,
-        type: "postgres",
-        error: error instanceof Error ? error.message : "Unknown error",
+        type: 'postgres',
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -172,18 +172,18 @@ export class PostgresAdapter {
   ): Repository<T> {
     const kx = trx || this.getKnex();
     const table = cfg.table;
-    const pk = cfg.primaryKey || "id";
+    const pk = cfg.primaryKey || 'id';
     const allowed = cfg.columns || [];
     const baseFilter = cfg.defaultFilter || {};
 
     // Soft delete configuration
     const softDeleteEnabled = cfg.softDelete ?? false;
-    const softDeleteField = cfg.softDeleteField ?? "deleted_at";
+    const softDeleteField = cfg.softDeleteField ?? 'deleted_at';
 
     // Timestamp configuration
     const timestampsEnabled = cfg.timestamps ?? false;
-    const createdAtField = cfg.createdAtField ?? "created_at";
-    const updatedAtField = cfg.updatedAtField ?? "updated_at";
+    const createdAtField = cfg.createdAtField ?? 'created_at';
+    const updatedAtField = cfg.updatedAtField ?? 'updated_at';
 
     // Hooks configuration
     const hooks = cfg.hooks;
@@ -214,7 +214,7 @@ export class PostgresAdapter {
       if (hooks?.beforeCreate) {
         const result = await hooks.beforeCreate({
           data,
-          operation: "create",
+          operation: 'create',
           isBulk: false,
         });
         return result ?? data;
@@ -232,7 +232,7 @@ export class PostgresAdapter {
       if (hooks?.beforeUpdate) {
         const result = await hooks.beforeUpdate({
           data,
-          operation: "update",
+          operation: 'update',
           isBulk: false,
         });
         return result ?? data;
@@ -273,15 +273,15 @@ export class PostgresAdapter {
       Object.entries(filter).forEach(([key, value]) => {
         assertFieldAllowed(key);
 
-        if (value && typeof value === "object" && !Array.isArray(value)) {
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
           const ops = value as Record<string, unknown>;
 
           if (ops.eq !== undefined) qb.where(key, ops.eq);
           if (ops.ne !== undefined) qb.whereNot(key, ops.ne);
-          if (ops.gt !== undefined) qb.where(key, ">", ops.gt);
-          if (ops.gte !== undefined) qb.where(key, ">=", ops.gte);
-          if (ops.lt !== undefined) qb.where(key, "<", ops.lt);
-          if (ops.lte !== undefined) qb.where(key, "<=", ops.lte);
+          if (ops.gt !== undefined) qb.where(key, '>', ops.gt);
+          if (ops.gte !== undefined) qb.where(key, '>=', ops.gte);
+          if (ops.lt !== undefined) qb.where(key, '<', ops.lt);
+          if (ops.lte !== undefined) qb.where(key, '<=', ops.lte);
           if (ops.in) qb.whereIn(key, ops.in as readonly string[]);
           if (ops.nin) qb.whereNotIn(key, ops.nin as readonly string[]);
           if (ops.like) qb.whereILike(key, `${ops.like}`);
@@ -299,11 +299,11 @@ export class PostgresAdapter {
     ): void => {
       if (!sort) return;
 
-      if (typeof sort === "string") {
-        const parts = sort.split(",");
+      if (typeof sort === 'string') {
+        const parts = sort.split(',');
         for (const p of parts) {
-          const dir = p.startsWith("-") ? "desc" : "asc";
-          const col = p.replace(/^[-+]/, "");
+          const dir = p.startsWith('-') ? 'desc' : 'asc';
+          const col = p.replace(/^[-+]/, '');
           assertFieldAllowed(col);
           qb.orderBy(col, dir);
         }
@@ -311,7 +311,7 @@ export class PostgresAdapter {
         Object.entries(sort).forEach(([col, dir]) => {
           assertFieldAllowed(col);
           const direction =
-            dir === -1 || String(dir).toLowerCase() === "desc" ? "desc" : "asc";
+            dir === -1 || String(dir).toLowerCase() === 'desc' ? 'desc' : 'asc';
           qb.orderBy(col, direction);
         });
       }
@@ -335,7 +335,7 @@ export class PostgresAdapter {
           processedData as Record<string, unknown>,
         ) as Partial<T>;
 
-        const [row] = await kx(table).insert(processedData).returning("*");
+        const [row] = await kx(table).insert(processedData).returning('*');
         const entity = row as T;
 
         // Run afterCreate hook
@@ -347,7 +347,7 @@ export class PostgresAdapter {
       async findById(id: string | number): Promise<T | null> {
         const mergedFilter = { ...baseFilter, ...notDeletedFilter };
         const qb = kx(table)
-          .select("*")
+          .select('*')
           .where({ [pk]: id });
         applyFilter(qb, mergedFilter);
         const row = await qb.first();
@@ -356,7 +356,7 @@ export class PostgresAdapter {
 
       async findAll(filter: Record<string, unknown> = {}): Promise<T[]> {
         const mergedFilter = { ...baseFilter, ...notDeletedFilter, ...filter };
-        const qb = kx(table).select("*");
+        const qb = kx(table).select('*');
         applyFilter(qb, mergedFilter);
         const rows = await qb;
         return rows as T[];
@@ -364,7 +364,7 @@ export class PostgresAdapter {
 
       async findOne(filter: Record<string, unknown>): Promise<T | null> {
         const mergedFilter = { ...baseFilter, ...notDeletedFilter, ...filter };
-        const qb = kx(table).select("*");
+        const qb = kx(table).select('*');
         applyFilter(qb, mergedFilter);
         const row = await qb.first();
         return (row as T) || null;
@@ -376,14 +376,14 @@ export class PostgresAdapter {
 
         const offset = Math.max(0, (page - 1) * limit);
 
-        const qb = kx(table).select("*");
+        const qb = kx(table).select('*');
         applyFilter(qb, mergedFilter);
         applySort(qb, sort);
 
         const data = (await qb.clone().limit(limit).offset(offset)) as T[];
 
         const countRow = await kx(table)
-          .count<{ count: string }[]>({ count: "*" })
+          .count<{ count: string }[]>({ count: '*' })
           .modify((q) => applyFilter(q, mergedFilter));
         const total = Number(countRow[0]?.count || 0);
 
@@ -403,7 +403,7 @@ export class PostgresAdapter {
         const mergedFilter = { ...baseFilter, ...notDeletedFilter };
         const qb = kx(table).where({ [pk]: id });
         applyFilter(qb, mergedFilter);
-        const [row] = await qb.update(processedUpdate).returning("*");
+        const [row] = await qb.update(processedUpdate).returning('*');
         const entity = (row as T) || null;
 
         // Run afterUpdate hook
@@ -443,7 +443,7 @@ export class PostgresAdapter {
       async count(filter: Record<string, unknown> = {}): Promise<number> {
         const mergedFilter = { ...baseFilter, ...notDeletedFilter, ...filter };
         const [{ count }] = await kx(table)
-          .count<{ count: string }[]>({ count: "*" })
+          .count<{ count: string }[]>({ count: '*' })
           .modify((q) => applyFilter(q, mergedFilter));
         return Number(count || 0);
       },
@@ -469,7 +469,7 @@ export class PostgresAdapter {
           addCreatedAt(item as Record<string, unknown>),
         );
 
-        const rows = await kx(table).insert(timestampedData).returning("*");
+        const rows = await kx(table).insert(timestampedData).returning('*');
 
         return rows as T[];
       },
@@ -519,7 +519,7 @@ export class PostgresAdapter {
         const mergedFilter = { ...baseFilter, ...notDeletedFilter, ...filter };
 
         // Try to find existing record
-        const qb = kx(table).select("*");
+        const qb = kx(table).select('*');
         applyFilter(qb, mergedFilter);
         const existing = await qb.first();
 
@@ -529,7 +529,7 @@ export class PostgresAdapter {
             data as Record<string, unknown>,
           );
           const updateQb = kx(table).where({ [pk]: existing[pk] });
-          const [row] = await updateQb.update(timestampedUpdate).returning("*");
+          const [row] = await updateQb.update(timestampedUpdate).returning('*');
           return row as T;
         } else {
           // Insert new record
@@ -537,7 +537,7 @@ export class PostgresAdapter {
             string,
             unknown
           >);
-          const [row] = await kx(table).insert(timestampedData).returning("*");
+          const [row] = await kx(table).insert(timestampedData).returning('*');
           return row as T;
         }
       },
@@ -606,7 +606,7 @@ export class PostgresAdapter {
             applyFilter(qb, mergedFilter);
             const [row] = await qb
               .update({ [softDeleteField]: null })
-              .returning("*");
+              .returning('*');
             return (row as T) || null;
           }
         : undefined,
@@ -626,7 +626,7 @@ export class PostgresAdapter {
         ? async (filter: Record<string, unknown> = {}): Promise<T[]> => {
             // Ignore soft delete filter, include all records
             const mergedFilter = { ...baseFilter, ...filter };
-            const qb = kx(table).select("*");
+            const qb = kx(table).select('*');
             applyFilter(qb, mergedFilter);
             const rows = await qb;
             return rows as T[];
@@ -638,7 +638,7 @@ export class PostgresAdapter {
             // Only find deleted records
             const deletedFilter = { [softDeleteField]: { isNotNull: true } };
             const mergedFilter = { ...baseFilter, ...deletedFilter, ...filter };
-            const qb = kx(table).select("*");
+            const qb = kx(table).select('*');
             applyFilter(qb, mergedFilter);
             const rows = await qb;
             return rows as T[];
@@ -676,7 +676,7 @@ export class PostgresAdapter {
     options: TransactionOptions = {},
   ): Promise<TResult> {
     const {
-      isolationLevel = "read committed",
+      isolationLevel = 'read committed',
       retries = 0,
       timeout = DATABASE_KIT_CONSTANTS.DEFAULT_TRANSACTION_TIMEOUT,
     } = options;
@@ -725,23 +725,23 @@ export class PostgresAdapter {
       }
     }
 
-    throw lastError || new Error("Transaction failed");
+    throw lastError || new Error('Transaction failed');
   }
 
   /**
    * Checks if a PostgreSQL error is retryable.
    */
   private isRetryableError(error: unknown): boolean {
-    if (error && typeof error === "object") {
+    if (error && typeof error === 'object') {
       const pgError = error as { code?: string; routine?: string };
 
       // PostgreSQL serialization failure codes
       const retryableCodes = [
-        "40001", // serialization_failure
-        "40P01", // deadlock_detected
-        "55P03", // lock_not_available
-        "57P01", // admin_shutdown
-        "57014", // query_canceled (timeout)
+        '40001', // serialization_failure
+        '40P01', // deadlock_detected
+        '55P03', // lock_not_available
+        '57P01', // admin_shutdown
+        '57014', // query_canceled (timeout)
       ];
 
       if (pgError.code && retryableCodes.includes(pgError.code)) {

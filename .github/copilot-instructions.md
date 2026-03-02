@@ -148,16 +148,16 @@ constructor(@Inject(DATABASE_TOKEN) private db: DatabaseService) {}
 
 ```typescript
 // ✅ Use specific NestJS exceptions
-throw new NotFoundException("User not found");
-throw new BadRequestException("Invalid input");
-throw new ConflictException("Email already exists");
-throw new InternalServerErrorException("Database error");
+throw new NotFoundException('User not found');
+throw new BadRequestException('Invalid input');
+throw new ConflictException('Email already exists');
+throw new InternalServerErrorException('Database error');
 
 // ✅ Log errors with context
 try {
   await this.operation();
 } catch (error) {
-  this.logger.error("Operation failed", error);
+  this.logger.error('Operation failed', error);
   throw error;
 }
 
@@ -175,11 +175,11 @@ try {
 // ✅ Environment-driven configuration
 const uri = process.env.MONGO_URI;
 if (!uri) {
-  throw new Error("MONGO_URI not configured");
+  throw new Error('MONGO_URI not configured');
 }
 
 // ❌ Never hardcode values
-const uri = "mongodb://localhost:27017/mydb";
+const uri = 'mongodb://localhost:27017/mydb';
 ```
 
 ### 4. Type Safety
@@ -235,7 +235,7 @@ export class UserService {
   async getUser(id: string): Promise<User> {
     const user = await this.users.findById(id);
     if (!user) {
-      throw new NotFoundException("User not found");
+      throw new NotFoundException('User not found');
     }
     return user;
   }
@@ -253,7 +253,7 @@ export class UserService {
 class MongoAdapter {
   async createUser(data: CreateUserDto) {
     if (await this.exists({ email: data.email })) {
-      throw new ConflictException("Email exists"); // Business logic!
+      throw new ConflictException('Email exists'); // Business logic!
     }
     return this.model.create(data);
   }
@@ -275,19 +275,19 @@ const poolSize = 10;
 const timeout = 5000;
 
 // ✅ GOOD
-const poolSize = parseInt(process.env.POOL_SIZE || "10", 10);
-const timeout = parseInt(process.env.TIMEOUT || "5000", 10);
+const poolSize = parseInt(process.env.POOL_SIZE || '10', 10);
+const timeout = parseInt(process.env.TIMEOUT || '5000', 10);
 ```
 
 ### 3. Leaking Internal Types
 
 ```typescript
 // ❌ BAD - Exporting internal implementation
-export { MongoAdapter } from "./adapters/mongo.adapter";
+export { MongoAdapter } from './adapters/mongo.adapter';
 
 // ✅ GOOD - Only export public API
-export { DatabaseService } from "./services/database.service";
-export { Repository } from "./contracts/database.contracts";
+export { DatabaseService } from './services/database.service';
+export { Repository } from './contracts/database.contracts';
 ```
 
 ### 4. Direct Model Access in Services
@@ -323,7 +323,7 @@ export class UserService {
 ### Test Structure
 
 ```typescript
-describe("DatabaseService", () => {
+describe('DatabaseService', () => {
   let service: DatabaseService;
   let mockAdapter: jest.Mocked<MongoAdapter>;
 
@@ -343,8 +343,8 @@ describe("DatabaseService", () => {
     service = module.get(DatabaseService);
   });
 
-  describe("connect", () => {
-    it("should connect to database", async () => {
+  describe('connect', () => {
+    it('should connect to database', async () => {
       await service.connect();
       expect(mockAdapter.connect).toHaveBeenCalled();
     });
@@ -362,34 +362,34 @@ describe("DatabaseService", () => {
 // index.ts - Only these should be exported
 
 // Module (primary)
-export { DatabaseKitModule } from "./database-kit.module";
+export { DatabaseKitModule } from './database-kit.module';
 
 // Services (for direct injection)
-export { DatabaseService } from "./services/database.service";
+export { DatabaseService } from './services/database.service';
 
 // Decorators (for DI)
-export { InjectDatabase } from "./middleware/database.decorators";
+export { InjectDatabase } from './middleware/database.decorators';
 
 // Filters (for app-wide use)
-export { DatabaseExceptionFilter } from "./filters/database-exception.filter";
+export { DatabaseExceptionFilter } from './filters/database-exception.filter';
 
 // Types (for consumers)
 export {
   Repository,
   PageResult,
   DatabaseConfig,
-} from "./contracts/database.contracts";
+} from './contracts/database.contracts';
 
 // Utilities (for convenience)
-export { isValidMongoId } from "./utils/validation.utils";
+export { isValidMongoId } from './utils/validation.utils';
 ```
 
 ### ❌ DON'T Export
 
 ```typescript
 // These should NOT be in index.ts
-export { MongoAdapter } from "./adapters/mongo.adapter"; // Internal
-export { PostgresAdapter } from "./adapters/postgres.adapter"; // Internal
+export { MongoAdapter } from './adapters/mongo.adapter'; // Internal
+export { PostgresAdapter } from './adapters/postgres.adapter'; // Internal
 ```
 
 ---

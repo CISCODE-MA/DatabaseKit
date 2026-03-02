@@ -1,5 +1,5 @@
-import { Injectable, Logger } from "@nestjs/common";
-import mongoose, { ConnectOptions, Model, ClientSession } from "mongoose";
+import { Injectable, Logger } from '@nestjs/common';
+import mongoose, { ConnectOptions, Model, ClientSession } from 'mongoose';
 
 import {
   MongoDatabaseConfig,
@@ -12,7 +12,7 @@ import {
   TransactionCallback,
   HealthCheckResult,
   DATABASE_KIT_CONSTANTS,
-} from "../contracts/database.contracts";
+} from '../contracts/database.contracts';
 
 /**
  * MongoDB adapter for DatabaseKit.
@@ -33,7 +33,7 @@ export class MongoAdapter {
 
   constructor(config: MongoDatabaseConfig) {
     this.config = config;
-    mongoose.set("strictQuery", false);
+    mongoose.set('strictQuery', false);
   }
 
   /**
@@ -45,7 +45,7 @@ export class MongoAdapter {
    */
   async connect(options: ConnectOptions = {}): Promise<typeof mongoose> {
     if (!this.connectionPromise) {
-      this.logger.log("Connecting to MongoDB...");
+      this.logger.log('Connecting to MongoDB...');
 
       // Apply pool configuration from config
       const poolConfig = this.config.pool || {};
@@ -65,16 +65,16 @@ export class MongoAdapter {
         ...options,
       });
 
-      mongoose.connection.on("connected", () => {
-        this.logger.log("Successfully connected to MongoDB");
+      mongoose.connection.on('connected', () => {
+        this.logger.log('Successfully connected to MongoDB');
       });
 
-      mongoose.connection.on("error", (err) => {
-        this.logger.error("MongoDB connection error", err?.message || err);
+      mongoose.connection.on('error', (err) => {
+        this.logger.error('MongoDB connection error', err?.message || err);
       });
 
-      mongoose.connection.on("disconnected", () => {
-        this.logger.warn("MongoDB disconnected");
+      mongoose.connection.on('disconnected', () => {
+        this.logger.warn('MongoDB disconnected');
       });
     }
 
@@ -87,7 +87,7 @@ export class MongoAdapter {
   async disconnect(): Promise<void> {
     await mongoose.disconnect();
     this.connectionPromise = undefined;
-    this.logger.log("Disconnected from MongoDB");
+    this.logger.log('Disconnected from MongoDB');
   }
 
   /**
@@ -119,8 +119,8 @@ export class MongoAdapter {
         return {
           healthy: false,
           responseTimeMs: Date.now() - startTime,
-          type: "mongo",
-          error: "Not connected to MongoDB",
+          type: 'mongo',
+          error: 'Not connected to MongoDB',
         };
       }
 
@@ -132,8 +132,8 @@ export class MongoAdapter {
         return {
           healthy: false,
           responseTimeMs: Date.now() - startTime,
-          type: "mongo",
-          error: "Ping command failed",
+          type: 'mongo',
+          error: 'Ping command failed',
         };
       }
 
@@ -143,7 +143,7 @@ export class MongoAdapter {
       return {
         healthy: true,
         responseTimeMs: Date.now() - startTime,
-        type: "mongo",
+        type: 'mongo',
         details: {
           version: serverInfo?.version,
         },
@@ -152,8 +152,8 @@ export class MongoAdapter {
       return {
         healthy: false,
         responseTimeMs: Date.now() - startTime,
-        type: "mongo",
-        error: error instanceof Error ? error.message : "Unknown error",
+        type: 'mongo',
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -172,12 +172,12 @@ export class MongoAdapter {
   ): Repository<T> {
     const model = opts.model as Model<any>;
     const softDeleteEnabled = opts.softDelete ?? false;
-    const softDeleteField = opts.softDeleteField ?? "deletedAt";
+    const softDeleteField = opts.softDeleteField ?? 'deletedAt';
 
     // Timestamp configuration
     const timestampsEnabled = opts.timestamps ?? false;
-    const createdAtField = opts.createdAtField ?? "createdAt";
-    const updatedAtField = opts.updatedAtField ?? "updatedAt";
+    const createdAtField = opts.createdAtField ?? 'createdAt';
+    const updatedAtField = opts.updatedAtField ?? 'updatedAt';
 
     // Base filter to exclude soft-deleted records
     const notDeletedFilter = softDeleteEnabled
@@ -312,7 +312,7 @@ export class MongoAdapter {
           const doc = await model
             .findOne(mergedFilter)
             .session(session)
-            .select("_id")
+            .select('_id')
             .lean()
             .exec();
           return !!doc;
@@ -605,21 +605,21 @@ export class MongoAdapter {
       }
     }
 
-    throw lastError || new Error("Transaction failed");
+    throw lastError || new Error('Transaction failed');
   }
 
   /**
    * Checks if an error is transient and can be retried.
    */
   private isTransientError(error: unknown): boolean {
-    if (error && typeof error === "object") {
+    if (error && typeof error === 'object') {
       const mongoError = error as {
         hasErrorLabel?: (label: string) => boolean;
         code?: number;
       };
 
       // MongoDB transient transaction errors
-      if (mongoError.hasErrorLabel?.("TransientTransactionError")) {
+      if (mongoError.hasErrorLabel?.('TransientTransactionError')) {
         return true;
       }
 

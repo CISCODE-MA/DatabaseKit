@@ -3,9 +3,9 @@
 import type {
   DatabaseConfig,
   DatabaseType,
-} from "../contracts/database.contracts";
+} from '../contracts/database.contracts';
 
-import { ENV_KEYS, DEFAULTS } from "./database.constants";
+import { ENV_KEYS, DEFAULTS } from './database.constants';
 
 /**
  * Helper class for environment-driven database configuration.
@@ -71,21 +71,21 @@ export class DatabaseConfigHelper {
   static fromEnv(): DatabaseConfig {
     const type = this.getEnv(ENV_KEYS.DATABASE_TYPE) as DatabaseType;
 
-    if (type !== "mongo" && type !== "postgres") {
+    if (type !== 'mongo' && type !== 'postgres') {
       throw new Error(
         `Invalid DATABASE_TYPE: "${String(type)}". Must be "mongo" or "postgres".`,
       );
     }
 
-    if (type === "mongo") {
+    if (type === 'mongo') {
       return {
-        type: "mongo",
+        type: 'mongo',
         connectionString: this.getEnv(ENV_KEYS.MONGO_URI),
       };
     }
 
     return {
-      type: "postgres",
+      type: 'postgres',
       connectionString: this.getEnv(ENV_KEYS.POSTGRES_URI),
     };
   }
@@ -101,24 +101,24 @@ export class DatabaseConfigHelper {
     const rawConfig = config as unknown as Record<string, unknown>;
 
     if (!rawConfig.type) {
-      throw new Error("Database configuration must include a type");
+      throw new Error('Database configuration must include a type');
     }
 
-    if (rawConfig.type !== "mongo" && rawConfig.type !== "postgres") {
+    if (rawConfig.type !== 'mongo' && rawConfig.type !== 'postgres') {
       throw new Error(
         `Invalid database type: "${rawConfig.type}". Must be "mongo" or "postgres".`,
       );
     }
 
     if (!rawConfig.connectionString) {
-      throw new Error("Database configuration must include a connectionString");
+      throw new Error('Database configuration must include a connectionString');
     }
 
     // Basic connection string validation
-    if (config.type === "mongo") {
+    if (config.type === 'mongo') {
       if (
-        !config.connectionString.startsWith("mongodb://") &&
-        !config.connectionString.startsWith("mongodb+srv://")
+        !config.connectionString.startsWith('mongodb://') &&
+        !config.connectionString.startsWith('mongodb+srv://')
       ) {
         throw new Error(
           'MongoDB connection string must start with "mongodb://" or "mongodb+srv://"',
@@ -126,10 +126,10 @@ export class DatabaseConfigHelper {
       }
     }
 
-    if (config.type === "postgres") {
+    if (config.type === 'postgres') {
       if (
-        !config.connectionString.startsWith("postgresql://") &&
-        !config.connectionString.startsWith("postgres://")
+        !config.connectionString.startsWith('postgresql://') &&
+        !config.connectionString.startsWith('postgres://')
       ) {
         throw new Error(
           'PostgreSQL connection string must start with "postgresql://" or "postgres://"',

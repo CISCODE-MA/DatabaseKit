@@ -1,6 +1,6 @@
 // src/services/logger.service.ts
 
-import { Injectable, Logger, LogLevel } from "@nestjs/common";
+import { Injectable, Logger, LogLevel } from '@nestjs/common';
 
 /**
  * Centralized logging service for DatabaseKit.
@@ -20,7 +20,7 @@ import { Injectable, Logger, LogLevel } from "@nestjs/common";
  */
 @Injectable()
 export class LoggerService {
-  private readonly logger = new Logger("DatabaseKit");
+  private readonly logger = new Logger('DatabaseKit');
 
   /**
    * Logs a message at the 'log' level.

@@ -52,9 +52,9 @@ src/
 ### Standard Test Template
 
 ```typescript
-import { Test, TestingModule } from "@nestjs/testing";
+import { Test, TestingModule } from '@nestjs/testing';
 
-describe("ClassName", () => {
+describe('ClassName', () => {
   let instance: ClassName;
   let mockDependency: jest.Mocked<DependencyType>;
 
@@ -79,8 +79,8 @@ describe("ClassName", () => {
     jest.clearAllMocks();
   });
 
-  describe("methodName", () => {
-    it("should do expected behavior", async () => {
+  describe('methodName', () => {
+    it('should do expected behavior', async () => {
       // Arrange
       mockDependency.method.mockResolvedValue(expectedData);
 
@@ -92,12 +92,12 @@ describe("ClassName", () => {
       expect(mockDependency.method).toHaveBeenCalledWith(expectedArgs);
     });
 
-    it("should throw when condition fails", async () => {
+    it('should throw when condition fails', async () => {
       // Arrange
-      mockDependency.method.mockRejectedValue(new Error("fail"));
+      mockDependency.method.mockRejectedValue(new Error('fail'));
 
       // Act & Assert
-      await expect(instance.methodName(input)).rejects.toThrow("fail");
+      await expect(instance.methodName(input)).rejects.toThrow('fail');
     });
   });
 });
@@ -196,27 +196,27 @@ const mockDatabaseService = {
 ### Repository Methods
 
 ```typescript
-describe("Repository", () => {
-  describe("create", () => {
-    it("should create and return entity");
-    it("should set createdAt when timestamps enabled");
-    it("should call beforeCreate hook");
-    it("should call afterCreate hook");
-    it("should throw on duplicate key");
+describe('Repository', () => {
+  describe('create', () => {
+    it('should create and return entity');
+    it('should set createdAt when timestamps enabled');
+    it('should call beforeCreate hook');
+    it('should call afterCreate hook');
+    it('should throw on duplicate key');
   });
 
-  describe("findById", () => {
-    it("should return entity when found");
-    it("should return null when not found");
-    it("should exclude soft-deleted records");
+  describe('findById', () => {
+    it('should return entity when found');
+    it('should return null when not found');
+    it('should exclude soft-deleted records');
   });
 
-  describe("findPage", () => {
-    it("should return paginated results");
-    it("should apply default page and limit");
-    it("should apply sorting");
-    it("should apply filters");
-    it("should calculate total pages correctly");
+  describe('findPage', () => {
+    it('should return paginated results');
+    it('should apply default page and limit');
+    it('should apply sorting');
+    it('should apply filters');
+    it('should calculate total pages correctly');
   });
 
   // ... test all 20+ methods
@@ -226,26 +226,26 @@ describe("Repository", () => {
 ### Error Scenarios
 
 ```typescript
-describe("Error Handling", () => {
-  it("should throw NotFoundException when entity not found");
-  it("should throw ConflictException on duplicate");
-  it("should throw BadRequestException on invalid input");
-  it("should handle database connection errors");
-  it("should rollback transaction on error");
+describe('Error Handling', () => {
+  it('should throw NotFoundException when entity not found');
+  it('should throw ConflictException on duplicate');
+  it('should throw BadRequestException on invalid input');
+  it('should handle database connection errors');
+  it('should rollback transaction on error');
 });
 ```
 
 ### Edge Cases
 
 ```typescript
-describe("Edge Cases", () => {
-  it("should handle empty array for insertMany");
-  it("should handle empty filter for findAll");
-  it("should handle page 0 (treat as page 1)");
-  it("should handle negative limit");
-  it("should handle very large page numbers");
-  it("should handle special characters in filters");
-  it("should handle null values correctly");
+describe('Edge Cases', () => {
+  it('should handle empty array for insertMany');
+  it('should handle empty filter for findAll');
+  it('should handle page 0 (treat as page 1)');
+  it('should handle negative limit');
+  it('should handle very large page numbers');
+  it('should handle special characters in filters');
+  it('should handle null values correctly');
 });
 ```
 
@@ -254,30 +254,30 @@ describe("Edge Cases", () => {
 ## 🔄 Transaction Testing
 
 ```typescript
-describe("Transactions", () => {
-  it("should commit on success", async () => {
+describe('Transactions', () => {
+  it('should commit on success', async () => {
     const result = await adapter.withTransaction(async (ctx) => {
       const repo = ctx.createRepository({ model });
-      return repo.create({ name: "test" });
+      return repo.create({ name: 'test' });
     });
     expect(result).toBeDefined();
   });
 
-  it("should rollback on error", async () => {
+  it('should rollback on error', async () => {
     await expect(
       adapter.withTransaction(async (ctx) => {
         const repo = ctx.createRepository({ model });
-        await repo.create({ name: "test" });
-        throw new Error("Intentional failure");
+        await repo.create({ name: 'test' });
+        throw new Error('Intentional failure');
       }),
-    ).rejects.toThrow("Intentional failure");
+    ).rejects.toThrow('Intentional failure');
 
     // Verify rollback - entity should not exist
     const count = await adapter.createRepository({ model }).count({});
     expect(count).toBe(0);
   });
 
-  it("should retry on transient errors", async () => {
+  it('should retry on transient errors', async () => {
     // Test retry logic
   });
 });
@@ -288,8 +288,8 @@ describe("Transactions", () => {
 ## 🪝 Hook Testing
 
 ```typescript
-describe("Hooks", () => {
-  it("should call beforeCreate and modify data", async () => {
+describe('Hooks', () => {
+  it('should call beforeCreate and modify data', async () => {
     const beforeCreate = jest.fn((ctx) => ({
       ...ctx.data,
       normalized: true,
@@ -300,23 +300,23 @@ describe("Hooks", () => {
       hooks: { beforeCreate },
     });
 
-    const result = await repo.create({ name: "test" });
+    const result = await repo.create({ name: 'test' });
 
     expect(beforeCreate).toHaveBeenCalled();
     expect(result.normalized).toBe(true);
   });
 
-  it("should call afterCreate with created entity", async () => {
+  it('should call afterCreate with created entity', async () => {
     const afterCreate = jest.fn();
     const repo = adapter.createRepository({
       model,
       hooks: { afterCreate },
     });
 
-    await repo.create({ name: "test" });
+    await repo.create({ name: 'test' });
 
     expect(afterCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "test" }),
+      expect.objectContaining({ name: 'test' }),
     );
   });
 
@@ -357,10 +357,10 @@ npm test -- --verbose
 
 ```typescript
 // Pattern: should [expected behavior] when [condition]
-it("should return null when entity not found");
-it("should throw NotFoundException when id is invalid");
-it("should set updatedAt when updating entity");
-it("should exclude soft-deleted records when softDelete enabled");
+it('should return null when entity not found');
+it('should throw NotFoundException when id is invalid');
+it('should set updatedAt when updating entity');
+it('should exclude soft-deleted records when softDelete enabled');
 ```
 
 ---
@@ -382,10 +382,10 @@ expect(result).toEqual(expectedEntity);
 ```typescript
 // BAD - Shared mutable state
 let counter = 0;
-it("test 1", () => {
+it('test 1', () => {
   counter++;
 });
-it("test 2", () => {
+it('test 2', () => {
   expect(counter).toBe(1);
 }); // Fragile!
 
@@ -399,14 +399,14 @@ beforeEach(() => {
 
 ```typescript
 // BAD - Missing await
-it("should create", () => {
-  repo.create({ name: "test" }); // Promise not awaited!
+it('should create', () => {
+  repo.create({ name: 'test' }); // Promise not awaited!
   expect(mock).toHaveBeenCalled(); // May fail randomly
 });
 
 // GOOD
-it("should create", async () => {
-  await repo.create({ name: "test" });
+it('should create', async () => {
+  await repo.create({ name: 'test' });
   expect(mock).toHaveBeenCalled();
 });
 ```
@@ -418,11 +418,11 @@ it("should create", async () => {
 ```javascript
 // jest.config.js
 module.exports = {
-  preset: "ts-jest",
-  testEnvironment: "node",
-  roots: ["<rootDir>/src"],
-  testMatch: ["**/*.spec.ts"],
-  collectCoverageFrom: ["src/**/*.ts", "!src/**/*.spec.ts", "!src/index.ts"],
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  roots: ['<rootDir>/src'],
+  testMatch: ['**/*.spec.ts'],
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.spec.ts', '!src/index.ts'],
   coverageThreshold: {
     global: {
       branches: 75,

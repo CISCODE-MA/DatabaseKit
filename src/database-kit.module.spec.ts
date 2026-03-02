@@ -1,22 +1,22 @@
-import { Logger } from "@nestjs/common";
+import { Logger } from '@nestjs/common';
 
-import { DATABASE_TOKEN } from "./config/database.constants";
-import { DatabaseKitModule } from "./database-kit.module";
-import { DatabaseService } from "./services/database.service";
+import { DATABASE_TOKEN } from './config/database.constants';
+import { DatabaseKitModule } from './database-kit.module';
+import { DatabaseService } from './services/database.service';
 
-describe("DatabaseKitModule", () => {
-  it("should create providers with autoConnect enabled", async () => {
+describe('DatabaseKitModule', () => {
+  it('should create providers with autoConnect enabled', async () => {
     const connectSpy = jest
-      .spyOn(DatabaseService.prototype, "connect")
+      .spyOn(DatabaseService.prototype, 'connect')
       .mockResolvedValue(undefined);
     const logSpy = jest
-      .spyOn(Logger.prototype, "log")
+      .spyOn(Logger.prototype, 'log')
       .mockImplementation(() => undefined);
 
     const module = DatabaseKitModule.forRoot({
       config: {
-        type: "mongo",
-        connectionString: "mongodb://localhost:27017/testdb",
+        type: 'mongo',
+        connectionString: 'mongodb://localhost:27017/testdb',
       },
     });
 
@@ -31,15 +31,15 @@ describe("DatabaseKitModule", () => {
     expect(logSpy).toHaveBeenCalled();
   });
 
-  it("should skip autoConnect when disabled", async () => {
+  it('should skip autoConnect when disabled', async () => {
     const connectSpy = jest
-      .spyOn(DatabaseService.prototype, "connect")
+      .spyOn(DatabaseService.prototype, 'connect')
       .mockResolvedValue(undefined);
 
     const module = DatabaseKitModule.forRoot({
       config: {
-        type: "mongo",
-        connectionString: "mongodb://localhost:27017/testdb",
+        type: 'mongo',
+        connectionString: 'mongodb://localhost:27017/testdb',
       },
       autoConnect: false,
     });
@@ -53,16 +53,16 @@ describe("DatabaseKitModule", () => {
     expect(connectSpy).not.toHaveBeenCalled();
   });
 
-  it("should build async module with provided factory", async () => {
+  it('should build async module with provided factory', async () => {
     const connectSpy = jest
-      .spyOn(DatabaseService.prototype, "connect")
+      .spyOn(DatabaseService.prototype, 'connect')
       .mockResolvedValue(undefined);
 
     const module = DatabaseKitModule.forRootAsync({
       useFactory: () => ({
         config: {
-          type: "postgres",
-          connectionString: "postgresql://localhost:5432/testdb",
+          type: 'postgres',
+          connectionString: 'postgresql://localhost:5432/testdb',
         },
         autoConnect: false,
       }),
@@ -74,8 +74,8 @@ describe("DatabaseKitModule", () => {
 
     await provider.useFactory({
       config: {
-        type: "postgres",
-        connectionString: "postgresql://localhost:5432/testdb",
+        type: 'postgres',
+        connectionString: 'postgresql://localhost:5432/testdb',
       },
       autoConnect: false,
     });
@@ -83,18 +83,18 @@ describe("DatabaseKitModule", () => {
     expect(connectSpy).not.toHaveBeenCalled();
   });
 
-  it("should create feature module and connect", async () => {
+  it('should create feature module and connect', async () => {
     const connectSpy = jest
-      .spyOn(DatabaseService.prototype, "connect")
+      .spyOn(DatabaseService.prototype, 'connect')
       .mockResolvedValue(undefined);
 
-    const module = DatabaseKitModule.forFeature("FEATURE_DB", {
-      type: "mongo",
-      connectionString: "mongodb://localhost:27017/testdb",
+    const module = DatabaseKitModule.forFeature('FEATURE_DB', {
+      type: 'mongo',
+      connectionString: 'mongodb://localhost:27017/testdb',
     });
 
     const provider = (module.providers || []).find(
-      (entry) => (entry as { provide: string }).provide === "FEATURE_DB",
+      (entry) => (entry as { provide: string }).provide === 'FEATURE_DB',
     ) as { useFactory: () => Promise<DatabaseService> };
 
     await provider.useFactory();
