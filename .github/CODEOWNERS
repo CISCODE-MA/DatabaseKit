@@ -1,0 +1,24 @@
+# DatabaseKit Code Owners
+
+# Default maintainers
+* @CISCODE-MA/database-kit-maintainers
+
+# Core architecture and adapters
+src/adapters/ @CISCODE-MA/database-kit-maintainers
+src/core/ @CISCODE-MA/database-kit-maintainers
+src/services/ @CISCODE-MA/database-kit-maintainers
+
+# Security and configuration
+src/filters/ @CISCODE-MA/database-kit-maintainers
+src/config/ @CISCODE-MA/database-kit-maintainers
+.github/workflows/ @CISCODE-MA/database-kit-maintainers
+SECURITY.md @CISCODE-MA/database-kit-maintainers
+
+# Testing
+test/ @CISCODE-MA/database-kit-maintainers
+jest.config.ts @CISCODE-MA/database-kit-maintainers
+
+# Dependencies and releases
+package.json @CISCODE-MA/database-kit-maintainers
+package-lock.json @CISCODE-MA/database-kit-maintainers
+CHANGELOG.md @CISCODE-MA/database-kit-maintainers
