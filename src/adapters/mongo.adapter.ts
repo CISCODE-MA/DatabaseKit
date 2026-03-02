@@ -13,6 +13,13 @@ import {
   HealthCheckResult,
   DATABASE_KIT_CONSTANTS,
 } from '../contracts/database.contracts';
+import {
+  shapePage,
+  addCreatedAtTimestamp,
+  addUpdatedAtTimestamp,
+  createErrorHealthResult,
+  createSuccessHealthResult,
+} from '../utils/adapter.utils';
 
 /**
  * MongoDB adapter for DatabaseKit.
@@ -116,12 +123,11 @@ export class MongoAdapter {
 
     try {
       if (!this.isConnected()) {
-        return {
-          healthy: false,
-          responseTimeMs: Date.now() - startTime,
-          type: 'mongo',
-          error: 'Not connected to MongoDB',
-        };
+        return createErrorHealthResult(
+          'mongo',
+          'Not connected to MongoDB',
+          startTime,
+        );
       }
 
       // Send ping command to verify connection
@@ -129,32 +135,25 @@ export class MongoAdapter {
       const pingResult = await admin?.ping();
 
       if (!pingResult?.ok) {
-        return {
-          healthy: false,
-          responseTimeMs: Date.now() - startTime,
-          type: 'mongo',
-          error: 'Ping command failed',
-        };
+        return createErrorHealthResult(
+          'mongo',
+          'Ping command failed',
+          startTime,
+        );
       }
 
       // Get server info for details
       const serverInfo = await admin?.serverInfo();
 
-      return {
-        healthy: true,
-        responseTimeMs: Date.now() - startTime,
-        type: 'mongo',
-        details: {
-          version: serverInfo?.version,
-        },
-      };
+      return createSuccessHealthResult('mongo', startTime, {
+        version: serverInfo?.version,
+      });
     } catch (error) {
-      return {
-        healthy: false,
-        responseTimeMs: Date.now() - startTime,
-        type: 'mongo',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
+      return createErrorHealthResult(
+        'mongo',
+        error instanceof Error ? error.message : 'Unknown error',
+        startTime,
+      );
     }
   }
 
@@ -184,30 +183,14 @@ export class MongoAdapter {
       ? { [softDeleteField]: { $eq: null } }
       : {};
 
-    // Helper to add createdAt timestamp
+    // Helper to add createdAt timestamp (using shared utility)
     const addCreatedAt = <D extends Record<string, unknown>>(data: D): D => {
-      if (timestampsEnabled) {
-        return { ...data, [createdAtField]: new Date() };
-      }
-      return data;
+      return addCreatedAtTimestamp(data, timestampsEnabled, createdAtField);
     };
 
-    // Helper to add updatedAt timestamp
+    // Helper to add updatedAt timestamp (using shared utility)
     const addUpdatedAt = <D extends Record<string, unknown>>(data: D): D => {
-      if (timestampsEnabled) {
-        return { ...data, [updatedAtField]: new Date() };
-      }
-      return data;
-    };
-
-    const shapePage = (
-      data: T[],
-      page: number,
-      limit: number,
-      total: number,
-    ): PageResult<T> => {
-      const pages = Math.max(1, Math.ceil((total || 0) / (limit || 1)));
-      return { data, page, limit, total, pages };
+      return addUpdatedAtTimestamp(data, timestampsEnabled, updatedAtField);
     };
 
     const repo: Repository<T> = {

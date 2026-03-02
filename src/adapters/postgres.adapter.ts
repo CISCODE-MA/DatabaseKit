@@ -13,6 +13,13 @@ import {
   HealthCheckResult,
   DATABASE_KIT_CONSTANTS,
 } from '../contracts/database.contracts';
+import {
+  shapePage,
+  addCreatedAtTimestamp,
+  addUpdatedAtTimestamp,
+  createErrorHealthResult,
+  createSuccessHealthResult,
+} from '../utils/adapter.utils';
 
 /**
  * PostgreSQL adapter for DatabaseKit.
@@ -117,12 +124,11 @@ export class PostgresAdapter {
 
     try {
       if (!this.knexInstance) {
-        return {
-          healthy: false,
-          responseTimeMs: Date.now() - startTime,
-          type: 'postgres',
-          error: 'Not connected to PostgreSQL',
-        };
+        return createErrorHealthResult(
+          'postgres',
+          'Not connected to PostgreSQL',
+          startTime,
+        );
       }
 
       // Execute simple query to verify connection
@@ -138,23 +144,17 @@ export class PostgresAdapter {
         }
       ).pool;
 
-      return {
-        healthy: true,
-        responseTimeMs: Date.now() - startTime,
-        type: 'postgres',
-        details: {
-          version: row?.version?.split(' ').slice(0, 2).join(' '),
-          activeConnections: pool?.numUsed?.() ?? 0,
-          poolSize: (pool?.numUsed?.() ?? 0) + (pool?.numFree?.() ?? 0),
-        },
-      };
+      return createSuccessHealthResult('postgres', startTime, {
+        version: row?.version?.split(' ').slice(0, 2).join(' '),
+        activeConnections: pool?.numUsed?.() ?? 0,
+        poolSize: (pool?.numUsed?.() ?? 0) + (pool?.numFree?.() ?? 0),
+      });
     } catch (error) {
-      return {
-        healthy: false,
-        responseTimeMs: Date.now() - startTime,
-        type: 'postgres',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
+      return createErrorHealthResult(
+        'postgres',
+        error instanceof Error ? error.message : 'Unknown error',
+        startTime,
+      );
     }
   }
 
@@ -193,20 +193,14 @@ export class PostgresAdapter {
       ? { [softDeleteField]: { isNull: true } }
       : {};
 
-    // Helper to add createdAt timestamp
+    // Helper to add createdAt timestamp (using shared utility)
     const addCreatedAt = <D extends Record<string, unknown>>(data: D): D => {
-      if (timestampsEnabled) {
-        return { ...data, [createdAtField]: new Date() };
-      }
-      return data;
+      return addCreatedAtTimestamp(data, timestampsEnabled, createdAtField);
     };
 
-    // Helper to add updatedAt timestamp
+    // Helper to add updatedAt timestamp (using shared utility)
     const addUpdatedAt = <D extends Record<string, unknown>>(data: D): D => {
-      if (timestampsEnabled) {
-        return { ...data, [updatedAtField]: new Date() };
-      }
-      return data;
+      return addUpdatedAtTimestamp(data, timestampsEnabled, updatedAtField);
     };
 
     // Hook helper functions
@@ -315,16 +309,6 @@ export class PostgresAdapter {
           qb.orderBy(col, direction);
         });
       }
-    };
-
-    const shapePage = (
-      data: T[],
-      page: number,
-      limit: number,
-      total: number,
-    ): PageResult<T> => {
-      const pages = Math.max(1, Math.ceil((total || 0) / (limit || 1)));
-      return { data, page, limit, total, pages };
     };
 
     const repo: Repository<T> = {
