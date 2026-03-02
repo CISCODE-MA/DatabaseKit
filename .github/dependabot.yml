@@ -8,8 +8,6 @@ updates:
       day: monday
       time: '03:00'
     open-pull-requests-limit: 5
-    reviewers:
-      - CISCODE-MA/cloud-devops
     assignees:
       - CISCODE-MA/cloud-devops
     labels:
@@ -18,16 +16,7 @@ updates:
     commit-message:
       prefix: 'chore(deps)'
       include: 'scope'
-    pull-request-branch-name:
-      separator: '/'
     rebase-strategy: auto
-    allow:
-      - dependency-type: 'production'
-      - dependency-type: 'development'
-    ignore:
-      # Optional: add dependencies that need manual review here
-      # - dependency-name: "@nestjs/*"
-      #   versions: [">=12.0.0"]
 
   # GitHub Actions
   - package-ecosystem: github-actions
@@ -36,8 +25,6 @@ updates:
       interval: weekly
       day: sunday
       time: '03:00'
-    reviewers:
-      - CISCODE-MA/cloud-devops
     assignees:
       - CISCODE-MA/cloud-devops
     labels:
