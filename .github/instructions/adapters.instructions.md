@@ -100,7 +100,7 @@ const model = mongoose.model<T>(name, schema);
 } // Direct pass-through
 {
   status: {
-    $in: ["active", "pending"];
+    $in: ['active', 'pending'];
   }
 }
 ```
@@ -126,7 +126,7 @@ try {
 
 ```typescript
 // MongoDB uses ObjectId
-import { Types } from "mongoose";
+import { Types } from 'mongoose';
 const objectId = new Types.ObjectId(id);
 ```
 
@@ -156,8 +156,8 @@ const table = knex<T>(tableName);
 ```typescript
 // Use Knex transaction
 await knex.transaction(async (trx) => {
-  await trx("users").insert(data);
-  await trx("orders").insert(orderData);
+  await trx('users').insert(data);
+  await trx('orders').insert(orderData);
 });
 ```
 
@@ -166,7 +166,7 @@ await knex.transaction(async (trx) => {
 ```typescript
 // PostgreSQL uses auto-increment or UUID
 // Return inserted row to get ID
-const [inserted] = await knex("users").insert(data).returning("*");
+const [inserted] = await knex('users').insert(data).returning('*');
 ```
 
 ---

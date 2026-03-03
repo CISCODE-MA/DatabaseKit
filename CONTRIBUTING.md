@@ -165,7 +165,7 @@ chore: update dependencies
 
 - **Constants:** `UPPER_SNAKE_CASE`
   ```typescript
-  export const DATABASE_TOKEN = "DATABASE_KIT_DEFAULT";
+  export const DATABASE_TOKEN = 'DATABASE_KIT_DEFAULT';
   export const DEFAULT_PAGE_SIZE = 10;
   ```
 
@@ -202,14 +202,14 @@ function parseData(input: any): any {
 ```typescript
 // ✅ DO: Use specific NestJS exceptions
 if (!user) {
-  throw new NotFoundException("User not found");
+  throw new NotFoundException('User not found');
 }
 
 // ✅ DO: Log errors with context
 try {
   await this.repo.create(data);
 } catch (error) {
-  this.logger.error("Failed to create user", error);
+  this.logger.error('Failed to create user', error);
   throw error;
 }
 
@@ -226,10 +226,10 @@ try {
 ```typescript
 // ✅ DO: Use environment variables
 const uri = process.env.MONGO_URI;
-if (!uri) throw new Error("MONGO_URI not configured");
+if (!uri) throw new Error('MONGO_URI not configured');
 
 // ❌ DON'T: Hardcode values
-const uri = "mongodb://localhost:27017/mydb";
+const uri = 'mongodb://localhost:27017/mydb';
 ```
 
 ---
@@ -252,10 +252,10 @@ src/services/database.service.spec.ts
 ### Test Structure
 
 ```typescript
-import { Test, TestingModule } from "@nestjs/testing";
-import { DatabaseService } from "./database.service";
+import { Test, TestingModule } from '@nestjs/testing';
+import { DatabaseService } from './database.service';
 
-describe("DatabaseService", () => {
+describe('DatabaseService', () => {
   let service: DatabaseService;
 
   beforeEach(async () => {
@@ -268,14 +268,14 @@ describe("DatabaseService", () => {
     service = module.get<DatabaseService>(DatabaseService);
   });
 
-  describe("connect", () => {
-    it("should connect to MongoDB", async () => {
+  describe('connect', () => {
+    it('should connect to MongoDB', async () => {
       // Arrange
       // Act
       // Assert
     });
 
-    it("should throw on invalid connection string", async () => {
+    it('should throw on invalid connection string', async () => {
       // ...
     });
   });

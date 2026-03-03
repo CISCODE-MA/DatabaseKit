@@ -1,5 +1,5 @@
-import { Injectable, Logger } from "@nestjs/common";
-import mongoose, { ConnectOptions, Model, ClientSession } from "mongoose";
+import { Injectable, Logger } from '@nestjs/common';
+import mongoose, { ConnectOptions, Model, ClientSession } from 'mongoose';
 
 import {
   MongoDatabaseConfig,
@@ -12,7 +12,365 @@ import {
   TransactionCallback,
   HealthCheckResult,
   DATABASE_KIT_CONSTANTS,
-} from "../contracts/database.contracts";
+} from '../contracts/database.contracts';
+import {
+  shapePage,
+  addCreatedAtTimestamp,
+  addUpdatedAtTimestamp,
+  createErrorHealthResult,
+  createSuccessHealthResult,
+} from '../utils/adapter.utils';
+
+type MongoRepoParams = {
+  model: Model<any>;
+  session?: ClientSession;
+  notDeletedFilter: Record<string, unknown>;
+  softDeleteEnabled: boolean;
+  softDeleteField: string;
+  timestampsEnabled: boolean;
+  createdAtField: string;
+  updatedAtField: string;
+  addCreatedAt: <D extends Record<string, unknown>>(data: D) => D;
+  addUpdatedAt: <D extends Record<string, unknown>>(data: D) => D;
+};
+
+function createMongoReadMethods<T>(params: MongoRepoParams) {
+  const { model, session, notDeletedFilter } = params;
+
+  return {
+    async findById(id: string | number): Promise<T | null> {
+      const mergedFilter = { _id: id, ...notDeletedFilter };
+      let query = model.findOne(mergedFilter);
+      if (session) query = query.session(session);
+      const doc = await query.lean().exec();
+      return doc as T | null;
+    },
+
+    async findAll(filter: Record<string, unknown> = {}): Promise<T[]> {
+      const mergedFilter = { ...filter, ...notDeletedFilter };
+      let query = model.find(mergedFilter);
+      if (session) query = query.session(session);
+      const docs = await query.lean().exec();
+      return docs as T[];
+    },
+
+    async findOne(filter: Record<string, unknown>): Promise<T | null> {
+      const mergedFilter = { ...filter, ...notDeletedFilter };
+      let query = model.findOne(mergedFilter);
+      if (session) query = query.session(session);
+      const doc = await query.lean().exec();
+      return doc as T | null;
+    },
+
+    async findPage(options: PageOptions = {}): Promise<PageResult<T>> {
+      const { filter = {}, page = 1, limit = 10, sort } = options;
+      const mergedFilter = { ...filter, ...notDeletedFilter };
+
+      const skip = Math.max(0, (page - 1) * limit);
+      let query = model.find(mergedFilter).skip(skip).limit(limit);
+
+      if (sort) {
+        query = query.sort(sort as Record<string, 1 | -1>);
+      }
+      if (session) query = query.session(session);
+
+      const [data, total] = await Promise.all([
+        query.lean().exec(),
+        session
+          ? model.countDocuments(mergedFilter).session(session).exec()
+          : model.countDocuments(mergedFilter).exec(),
+      ]);
+
+      return shapePage(data as T[], page, limit, total);
+    },
+
+    async count(filter: Record<string, unknown> = {}): Promise<number> {
+      const mergedFilter = { ...filter, ...notDeletedFilter };
+      let query = model.countDocuments(mergedFilter);
+      if (session) query = query.session(session);
+      return query.exec();
+    },
+
+    async exists(filter: Record<string, unknown> = {}): Promise<boolean> {
+      const mergedFilter = { ...filter, ...notDeletedFilter };
+      if (session) {
+        const doc = await model
+          .findOne(mergedFilter)
+          .session(session)
+          .select('_id')
+          .lean()
+          .exec();
+        return !!doc;
+      }
+      const res = await model.exists(mergedFilter);
+      return !!res;
+    },
+
+    async distinct<K extends keyof T>(
+      field: K,
+      filter: Record<string, unknown> = {},
+    ): Promise<T[K][]> {
+      const mergedFilter = { ...filter, ...notDeletedFilter };
+      let query = model.distinct(String(field), mergedFilter);
+      if (session) query = query.session(session);
+      const values = await query.exec();
+      return values as T[K][];
+    },
+
+    async select<K extends keyof T>(
+      filter: Record<string, unknown>,
+      fields: K[],
+    ): Promise<Pick<T, K>[]> {
+      const mergedFilter = { ...filter, ...notDeletedFilter };
+      const projection = fields.reduce(
+        (acc, field) => ({ ...acc, [field]: 1 }),
+        {},
+      );
+      let query = model.find(mergedFilter).select(projection);
+      if (session) query = query.session(session);
+      const docs = await query.lean().exec();
+      return docs as Pick<T, K>[];
+    },
+  };
+}
+
+function createMongoWriteMethods<T>(params: MongoRepoParams) {
+  const {
+    model,
+    session,
+    notDeletedFilter,
+    softDeleteEnabled,
+    softDeleteField,
+    addCreatedAt,
+    addUpdatedAt,
+  } = params;
+
+  return {
+    async create(data: Partial<T>): Promise<T> {
+      const timestampedData = addCreatedAt(data as Record<string, unknown>);
+      const doc = session
+        ? (await model.create([timestampedData], { session }))[0]
+        : await model.create(timestampedData);
+      return (doc as { toObject?: () => T }).toObject?.() ?? (doc as T);
+    },
+
+    async updateById(
+      id: string | number,
+      update: Partial<T>,
+    ): Promise<T | null> {
+      const mergedFilter = { _id: id, ...notDeletedFilter };
+      const timestampedUpdate = addUpdatedAt(update as Record<string, unknown>);
+      let query = model.findOneAndUpdate(mergedFilter, timestampedUpdate, {
+        new: true,
+      });
+      if (session) query = query.session(session);
+      const doc = await query.lean().exec();
+      return doc as T | null;
+    },
+
+    async deleteById(id: string | number): Promise<boolean> {
+      if (softDeleteEnabled) {
+        const mergedFilter = { _id: id, ...notDeletedFilter };
+        const options = session ? { session } : {};
+        const result = await model
+          .updateOne(mergedFilter, { [softDeleteField]: new Date() }, options)
+          .exec();
+        return result.modifiedCount > 0;
+      }
+
+      let query = model.findByIdAndDelete(id);
+      if (session) query = query.session(session);
+      const res = await query.lean().exec();
+      return !!res;
+    },
+  };
+}
+
+function createMongoBulkMethods<T>(params: MongoRepoParams) {
+  const {
+    model,
+    session,
+    notDeletedFilter,
+    softDeleteEnabled,
+    softDeleteField,
+    addCreatedAt,
+    addUpdatedAt,
+  } = params;
+
+  return {
+    async insertMany(data: Partial<T>[]): Promise<T[]> {
+      if (data.length === 0) return [];
+
+      const timestampedData = data.map((item) =>
+        addCreatedAt(item as Record<string, unknown>),
+      );
+
+      const docs = session
+        ? await model.insertMany(timestampedData, { session })
+        : await model.insertMany(timestampedData);
+
+      return docs.map(
+        (doc: { toObject?: () => T }) => doc.toObject?.() ?? (doc as T),
+      );
+    },
+
+    async updateMany(
+      filter: Record<string, unknown>,
+      update: Partial<T>,
+    ): Promise<number> {
+      const mergedFilter = { ...filter, ...notDeletedFilter };
+      const timestampedUpdate = addUpdatedAt(update as Record<string, unknown>);
+      const options = session ? { session } : {};
+      const result = await model
+        .updateMany(mergedFilter, timestampedUpdate, options)
+        .exec();
+      return result.modifiedCount;
+    },
+
+    async deleteMany(filter: Record<string, unknown>): Promise<number> {
+      const mergedFilter = { ...filter, ...notDeletedFilter };
+      const options = session ? { session } : {};
+
+      if (softDeleteEnabled) {
+        const result = await model
+          .updateMany(mergedFilter, { [softDeleteField]: new Date() }, options)
+          .exec();
+        return result.modifiedCount;
+      }
+
+      const result = await model.deleteMany(mergedFilter, options).exec();
+      return result.deletedCount;
+    },
+  };
+}
+
+function createMongoAdvancedMethods<T>(params: MongoRepoParams) {
+  const {
+    model,
+    session,
+    notDeletedFilter,
+    timestampsEnabled,
+    createdAtField,
+    updatedAtField,
+  } = params;
+
+  return {
+    async upsert(
+      filter: Record<string, unknown>,
+      data: Partial<T>,
+    ): Promise<T> {
+      const mergedFilter = { ...filter, ...notDeletedFilter };
+      const timestampedData = timestampsEnabled
+        ? { ...data, [updatedAtField]: new Date() }
+        : data;
+
+      let query = model.findOneAndUpdate(
+        mergedFilter,
+        {
+          $set: timestampedData,
+          ...(timestampsEnabled
+            ? { $setOnInsert: { [createdAtField]: new Date() } }
+            : {}),
+        },
+        { upsert: true, new: true },
+      );
+      if (session) query = query.session(session);
+      const doc = await query.lean().exec();
+      return doc as T;
+    },
+  };
+}
+
+function createMongoSoftDeleteMethods<T>(params: MongoRepoParams) {
+  const {
+    model,
+    session,
+    notDeletedFilter,
+    softDeleteEnabled,
+    softDeleteField,
+  } = params;
+
+  if (!softDeleteEnabled) {
+    return {
+      softDelete: undefined,
+      softDeleteMany: undefined,
+      restore: undefined,
+      restoreMany: undefined,
+      findAllWithDeleted: undefined,
+      findDeleted: undefined,
+    };
+  }
+
+  return {
+    softDelete: async (id: string | number): Promise<boolean> => {
+      const mergedFilter = { _id: id, ...notDeletedFilter };
+      const options = session ? { session } : {};
+      const result = await model
+        .updateOne(mergedFilter, { [softDeleteField]: new Date() }, options)
+        .exec();
+      return result.modifiedCount > 0;
+    },
+
+    softDeleteMany: async (
+      filter: Record<string, unknown>,
+    ): Promise<number> => {
+      const mergedFilter = { ...filter, ...notDeletedFilter };
+      const options = session ? { session } : {};
+      const result = await model
+        .updateMany(mergedFilter, { [softDeleteField]: new Date() }, options)
+        .exec();
+      return result.modifiedCount;
+    },
+
+    restore: async (id: string | number): Promise<T | null> => {
+      const deletedFilter = { _id: id, [softDeleteField]: { $ne: null } };
+      let query = model.findOneAndUpdate(
+        deletedFilter,
+        { $unset: { [softDeleteField]: 1 } },
+        { new: true },
+      );
+      if (session) query = query.session(session);
+      const doc = await query.lean().exec();
+      return doc as T | null;
+    },
+
+    restoreMany: async (filter: Record<string, unknown>): Promise<number> => {
+      const deletedFilter = {
+        ...filter,
+        [softDeleteField]: { $ne: null },
+      };
+      const options = session ? { session } : {};
+      const result = await model
+        .updateMany(
+          deletedFilter,
+          { $unset: { [softDeleteField]: 1 } },
+          options,
+        )
+        .exec();
+      return result.modifiedCount;
+    },
+
+    findAllWithDeleted: async (
+      filter: Record<string, unknown> = {},
+    ): Promise<T[]> => {
+      let query = model.find(filter);
+      if (session) query = query.session(session);
+      const docs = await query.lean().exec();
+      return docs as T[];
+    },
+
+    findDeleted: async (filter: Record<string, unknown> = {}): Promise<T[]> => {
+      const deletedFilter = {
+        ...filter,
+        [softDeleteField]: { $ne: null },
+      };
+      let query = model.find(deletedFilter);
+      if (session) query = query.session(session);
+      const docs = await query.lean().exec();
+      return docs as T[];
+    },
+  };
+}
 
 /**
  * MongoDB adapter for DatabaseKit.
@@ -33,7 +391,7 @@ export class MongoAdapter {
 
   constructor(config: MongoDatabaseConfig) {
     this.config = config;
-    mongoose.set("strictQuery", false);
+    mongoose.set('strictQuery', false);
   }
 
   /**
@@ -44,8 +402,8 @@ export class MongoAdapter {
    * @returns Promise resolving to mongoose instance
    */
   async connect(options: ConnectOptions = {}): Promise<typeof mongoose> {
-    if (!this.connectionPromise) {
-      this.logger.log("Connecting to MongoDB...");
+    if (this.connectionPromise === undefined) {
+      this.logger.log('Connecting to MongoDB...');
 
       // Apply pool configuration from config
       const poolConfig = this.config.pool || {};
@@ -65,16 +423,16 @@ export class MongoAdapter {
         ...options,
       });
 
-      mongoose.connection.on("connected", () => {
-        this.logger.log("Successfully connected to MongoDB");
+      mongoose.connection.on('connected', () => {
+        this.logger.log('Successfully connected to MongoDB');
       });
 
-      mongoose.connection.on("error", (err) => {
-        this.logger.error("MongoDB connection error", err?.message || err);
+      mongoose.connection.on('error', (err) => {
+        this.logger.error('MongoDB connection error', err?.message || err);
       });
 
-      mongoose.connection.on("disconnected", () => {
-        this.logger.warn("MongoDB disconnected");
+      mongoose.connection.on('disconnected', () => {
+        this.logger.warn('MongoDB disconnected');
       });
     }
 
@@ -87,7 +445,7 @@ export class MongoAdapter {
   async disconnect(): Promise<void> {
     await mongoose.disconnect();
     this.connectionPromise = undefined;
-    this.logger.log("Disconnected from MongoDB");
+    this.logger.log('Disconnected from MongoDB');
   }
 
   /**
@@ -116,12 +474,11 @@ export class MongoAdapter {
 
     try {
       if (!this.isConnected()) {
-        return {
-          healthy: false,
-          responseTimeMs: Date.now() - startTime,
-          type: "mongo",
-          error: "Not connected to MongoDB",
-        };
+        return createErrorHealthResult(
+          'mongo',
+          'Not connected to MongoDB',
+          startTime,
+        );
       }
 
       // Send ping command to verify connection
@@ -129,32 +486,25 @@ export class MongoAdapter {
       const pingResult = await admin?.ping();
 
       if (!pingResult?.ok) {
-        return {
-          healthy: false,
-          responseTimeMs: Date.now() - startTime,
-          type: "mongo",
-          error: "Ping command failed",
-        };
+        return createErrorHealthResult(
+          'mongo',
+          'Ping command failed',
+          startTime,
+        );
       }
 
       // Get server info for details
       const serverInfo = await admin?.serverInfo();
 
-      return {
-        healthy: true,
-        responseTimeMs: Date.now() - startTime,
-        type: "mongo",
-        details: {
-          version: serverInfo?.version,
-        },
-      };
+      return createSuccessHealthResult('mongo', startTime, {
+        version: serverInfo?.version,
+      });
     } catch (error) {
-      return {
-        healthy: false,
-        responseTimeMs: Date.now() - startTime,
-        type: "mongo",
-        error: error instanceof Error ? error.message : "Unknown error",
-      };
+      return createErrorHealthResult(
+        'mongo',
+        error instanceof Error ? error.message : 'Unknown error',
+        startTime,
+      );
     }
   }
 
@@ -172,355 +522,40 @@ export class MongoAdapter {
   ): Repository<T> {
     const model = opts.model as Model<any>;
     const softDeleteEnabled = opts.softDelete ?? false;
-    const softDeleteField = opts.softDeleteField ?? "deletedAt";
-
-    // Timestamp configuration
+    const softDeleteField = opts.softDeleteField ?? 'deletedAt';
     const timestampsEnabled = opts.timestamps ?? false;
-    const createdAtField = opts.createdAtField ?? "createdAt";
-    const updatedAtField = opts.updatedAtField ?? "updatedAt";
-
-    // Base filter to exclude soft-deleted records
+    const createdAtField = opts.createdAtField ?? 'createdAt';
+    const updatedAtField = opts.updatedAtField ?? 'updatedAt';
     const notDeletedFilter = softDeleteEnabled
       ? { [softDeleteField]: { $eq: null } }
       : {};
 
-    // Helper to add createdAt timestamp
-    const addCreatedAt = <D extends Record<string, unknown>>(data: D): D => {
-      if (timestampsEnabled) {
-        return { ...data, [createdAtField]: new Date() };
-      }
-      return data;
+    const addCreatedAt = <D extends Record<string, unknown>>(data: D): D =>
+      addCreatedAtTimestamp(data, timestampsEnabled, createdAtField);
+
+    const addUpdatedAt = <D extends Record<string, unknown>>(data: D): D =>
+      addUpdatedAtTimestamp(data, timestampsEnabled, updatedAtField);
+
+    const params: MongoRepoParams = {
+      model,
+      session,
+      notDeletedFilter,
+      softDeleteEnabled,
+      softDeleteField,
+      timestampsEnabled,
+      createdAtField,
+      updatedAtField,
+      addCreatedAt,
+      addUpdatedAt,
     };
 
-    // Helper to add updatedAt timestamp
-    const addUpdatedAt = <D extends Record<string, unknown>>(data: D): D => {
-      if (timestampsEnabled) {
-        return { ...data, [updatedAtField]: new Date() };
-      }
-      return data;
+    return {
+      ...createMongoReadMethods<T>(params),
+      ...createMongoWriteMethods<T>(params),
+      ...createMongoBulkMethods<T>(params),
+      ...createMongoAdvancedMethods<T>(params),
+      ...createMongoSoftDeleteMethods<T>(params),
     };
-
-    const shapePage = (
-      data: T[],
-      page: number,
-      limit: number,
-      total: number,
-    ): PageResult<T> => {
-      const pages = Math.max(1, Math.ceil((total || 0) / (limit || 1)));
-      return { data, page, limit, total, pages };
-    };
-
-    const repo: Repository<T> = {
-      async create(data: Partial<T>): Promise<T> {
-        const timestampedData = addCreatedAt(data as Record<string, unknown>);
-        const doc = session
-          ? (await model.create([timestampedData], { session }))[0]
-          : await model.create(timestampedData);
-        return (doc as { toObject?: () => T }).toObject?.() ?? (doc as T);
-      },
-
-      async findById(id: string | number): Promise<T | null> {
-        const mergedFilter = { _id: id, ...notDeletedFilter };
-        let query = model.findOne(mergedFilter);
-        if (session) query = query.session(session);
-        const doc = await query.lean().exec();
-        return doc as T | null;
-      },
-
-      async findAll(filter: Record<string, unknown> = {}): Promise<T[]> {
-        const mergedFilter = { ...filter, ...notDeletedFilter };
-        let query = model.find(mergedFilter);
-        if (session) query = query.session(session);
-        const docs = await query.lean().exec();
-        return docs as T[];
-      },
-
-      async findOne(filter: Record<string, unknown>): Promise<T | null> {
-        const mergedFilter = { ...filter, ...notDeletedFilter };
-        let query = model.findOne(mergedFilter);
-        if (session) query = query.session(session);
-        const doc = await query.lean().exec();
-        return doc as T | null;
-      },
-
-      async findPage(options: PageOptions = {}): Promise<PageResult<T>> {
-        const { filter = {}, page = 1, limit = 10, sort } = options;
-        const mergedFilter = { ...filter, ...notDeletedFilter };
-
-        const skip = Math.max(0, (page - 1) * limit);
-        let query = model.find(mergedFilter).skip(skip).limit(limit);
-
-        if (sort) {
-          query = query.sort(sort as Record<string, 1 | -1>);
-        }
-        if (session) query = query.session(session);
-
-        const [data, total] = await Promise.all([
-          query.lean().exec(),
-          session
-            ? model.countDocuments(mergedFilter).session(session).exec()
-            : model.countDocuments(mergedFilter).exec(),
-        ]);
-
-        return shapePage(data as T[], page, limit, total);
-      },
-
-      async updateById(
-        id: string | number,
-        update: Partial<T>,
-      ): Promise<T | null> {
-        const mergedFilter = { _id: id, ...notDeletedFilter };
-        const timestampedUpdate = addUpdatedAt(
-          update as Record<string, unknown>,
-        );
-        let query = model.findOneAndUpdate(mergedFilter, timestampedUpdate, {
-          new: true,
-        });
-        if (session) query = query.session(session);
-        const doc = await query.lean().exec();
-        return doc as T | null;
-      },
-
-      async deleteById(id: string | number): Promise<boolean> {
-        // If soft delete is enabled, use softDelete instead
-        if (softDeleteEnabled) {
-          const mergedFilter = { _id: id, ...notDeletedFilter };
-          const options = session ? { session } : {};
-          const result = await model
-            .updateOne(mergedFilter, { [softDeleteField]: new Date() }, options)
-            .exec();
-          return result.modifiedCount > 0;
-        }
-
-        let query = model.findByIdAndDelete(id);
-        if (session) query = query.session(session);
-        const res = await query.lean().exec();
-        return !!res;
-      },
-
-      async count(filter: Record<string, unknown> = {}): Promise<number> {
-        const mergedFilter = { ...filter, ...notDeletedFilter };
-        let query = model.countDocuments(mergedFilter);
-        if (session) query = query.session(session);
-        return query.exec();
-      },
-
-      async exists(filter: Record<string, unknown> = {}): Promise<boolean> {
-        const mergedFilter = { ...filter, ...notDeletedFilter };
-        // exists() doesn't support session directly, use findOne
-        if (session) {
-          const doc = await model
-            .findOne(mergedFilter)
-            .session(session)
-            .select("_id")
-            .lean()
-            .exec();
-          return !!doc;
-        }
-        const res = await model.exists(mergedFilter);
-        return !!res;
-      },
-
-      // -----------------------------
-      // Bulk Operations
-      // -----------------------------
-
-      async insertMany(data: Partial<T>[]): Promise<T[]> {
-        if (data.length === 0) return [];
-
-        // Add createdAt timestamp to each record
-        const timestampedData = data.map((item) =>
-          addCreatedAt(item as Record<string, unknown>),
-        );
-
-        const docs = session
-          ? await model.insertMany(timestampedData, { session })
-          : await model.insertMany(timestampedData);
-
-        return docs.map(
-          (doc) => (doc as { toObject?: () => T }).toObject?.() ?? (doc as T),
-        );
-      },
-
-      async updateMany(
-        filter: Record<string, unknown>,
-        update: Partial<T>,
-      ): Promise<number> {
-        const mergedFilter = { ...filter, ...notDeletedFilter };
-        const timestampedUpdate = addUpdatedAt(
-          update as Record<string, unknown>,
-        );
-        const options = session ? { session } : {};
-        const result = await model
-          .updateMany(mergedFilter, timestampedUpdate, options)
-          .exec();
-        return result.modifiedCount;
-      },
-
-      async deleteMany(filter: Record<string, unknown>): Promise<number> {
-        const mergedFilter = { ...filter, ...notDeletedFilter };
-        const options = session ? { session } : {};
-
-        // If soft delete is enabled, update instead of delete
-        if (softDeleteEnabled) {
-          const result = await model
-            .updateMany(
-              mergedFilter,
-              { [softDeleteField]: new Date() },
-              options,
-            )
-            .exec();
-          return result.modifiedCount;
-        }
-
-        const result = await model.deleteMany(mergedFilter, options).exec();
-        return result.deletedCount;
-      },
-
-      // -----------------------------
-      // Advanced Query Operations
-      // -----------------------------
-
-      async upsert(
-        filter: Record<string, unknown>,
-        data: Partial<T>,
-      ): Promise<T> {
-        const mergedFilter = { ...filter, ...notDeletedFilter };
-        const timestampedData = timestampsEnabled
-          ? { ...data, [updatedAtField]: new Date() }
-          : data;
-
-        let query = model.findOneAndUpdate(
-          mergedFilter,
-          {
-            $set: timestampedData,
-            ...(timestampsEnabled
-              ? { $setOnInsert: { [createdAtField]: new Date() } }
-              : {}),
-          },
-          { upsert: true, new: true },
-        );
-        if (session) query = query.session(session);
-        const doc = await query.lean().exec();
-        return doc as T;
-      },
-
-      async distinct<K extends keyof T>(
-        field: K,
-        filter: Record<string, unknown> = {},
-      ): Promise<T[K][]> {
-        const mergedFilter = { ...filter, ...notDeletedFilter };
-        let query = model.distinct(String(field), mergedFilter);
-        if (session) query = query.session(session);
-        const values = await query.exec();
-        return values as T[K][];
-      },
-
-      async select<K extends keyof T>(
-        filter: Record<string, unknown>,
-        fields: K[],
-      ): Promise<Pick<T, K>[]> {
-        const mergedFilter = { ...filter, ...notDeletedFilter };
-        const projection = fields.reduce(
-          (acc, field) => ({ ...acc, [field]: 1 }),
-          {},
-        );
-        let query = model.find(mergedFilter).select(projection);
-        if (session) query = query.session(session);
-        const docs = await query.lean().exec();
-        return docs as Pick<T, K>[];
-      },
-
-      // -----------------------------
-      // Soft Delete Operations
-      // -----------------------------
-
-      softDelete: softDeleteEnabled
-        ? async (id: string | number): Promise<boolean> => {
-            const mergedFilter = { _id: id, ...notDeletedFilter };
-            const options = session ? { session } : {};
-            const result = await model
-              .updateOne(
-                mergedFilter,
-                { [softDeleteField]: new Date() },
-                options,
-              )
-              .exec();
-            return result.modifiedCount > 0;
-          }
-        : undefined,
-
-      softDeleteMany: softDeleteEnabled
-        ? async (filter: Record<string, unknown>): Promise<number> => {
-            const mergedFilter = { ...filter, ...notDeletedFilter };
-            const options = session ? { session } : {};
-            const result = await model
-              .updateMany(
-                mergedFilter,
-                { [softDeleteField]: new Date() },
-                options,
-              )
-              .exec();
-            return result.modifiedCount;
-          }
-        : undefined,
-
-      restore: softDeleteEnabled
-        ? async (id: string | number): Promise<T | null> => {
-            const deletedFilter = { _id: id, [softDeleteField]: { $ne: null } };
-            let query = model.findOneAndUpdate(
-              deletedFilter,
-              { $unset: { [softDeleteField]: 1 } },
-              { new: true },
-            );
-            if (session) query = query.session(session);
-            const doc = await query.lean().exec();
-            return doc as T | null;
-          }
-        : undefined,
-
-      restoreMany: softDeleteEnabled
-        ? async (filter: Record<string, unknown>): Promise<number> => {
-            const deletedFilter = {
-              ...filter,
-              [softDeleteField]: { $ne: null },
-            };
-            const options = session ? { session } : {};
-            const result = await model
-              .updateMany(
-                deletedFilter,
-                { $unset: { [softDeleteField]: 1 } },
-                options,
-              )
-              .exec();
-            return result.modifiedCount;
-          }
-        : undefined,
-
-      findAllWithDeleted: softDeleteEnabled
-        ? async (filter: Record<string, unknown> = {}): Promise<T[]> => {
-            let query = model.find(filter);
-            if (session) query = query.session(session);
-            const docs = await query.lean().exec();
-            return docs as T[];
-          }
-        : undefined,
-
-      findDeleted: softDeleteEnabled
-        ? async (filter: Record<string, unknown> = {}): Promise<T[]> => {
-            const deletedFilter = {
-              ...filter,
-              [softDeleteField]: { $ne: null },
-            };
-            let query = model.find(deletedFilter);
-            if (session) query = query.session(session);
-            const docs = await query.lean().exec();
-            return docs as T[];
-          }
-        : undefined,
-    };
-
-    return repo;
   }
 
   /**
@@ -605,21 +640,21 @@ export class MongoAdapter {
       }
     }
 
-    throw lastError || new Error("Transaction failed");
+    throw lastError || new Error('Transaction failed');
   }
 
   /**
    * Checks if an error is transient and can be retried.
    */
   private isTransientError(error: unknown): boolean {
-    if (error && typeof error === "object") {
+    if (error && typeof error === 'object') {
       const mongoError = error as {
         hasErrorLabel?: (label: string) => boolean;
         code?: number;
       };
 
       // MongoDB transient transaction errors
-      if (mongoError.hasErrorLabel?.("TransientTransactionError")) {
+      if (mongoError.hasErrorLabel?.('TransientTransactionError')) {
         return true;
       }
 

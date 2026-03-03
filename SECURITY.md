@@ -62,14 +62,14 @@ Please provide as much information as possible:
 ```typescript
 // ✅ DO: Use environment variables
 const config = {
-  type: "postgres",
+  type: 'postgres',
   connectionString: process.env.DATABASE_URL,
 };
 
 // ❌ DON'T: Hardcode credentials
 const config = {
-  type: "postgres",
-  connectionString: "postgresql://admin:password123@localhost/mydb",
+  type: 'postgres',
+  connectionString: 'postgresql://admin:password123@localhost/mydb',
 };
 ```
 
@@ -103,13 +103,13 @@ await repo.findAll({ name: `%${userInput}%` }); // Risky!
 ```typescript
 // ✅ DO: Explicitly whitelist columns
 const repo = db.createPostgresRepository({
-  table: "users",
-  columns: ["id", "name", "email"], // Only these columns are queryable
+  table: 'users',
+  columns: ['id', 'name', 'email'], // Only these columns are queryable
 });
 
 // ❌ DON'T: Allow all columns (unless necessary)
 const repo = db.createPostgresRepository({
-  table: "users",
+  table: 'users',
   columns: [], // Empty = all columns allowed
 });
 ```
@@ -143,7 +143,7 @@ const repo = db.createPostgresRepository({
 
    ```typescript
    @UseGuards(AuthGuard)
-   @Controller("users")
+   @Controller('users')
    export class UsersController {}
    ```
 

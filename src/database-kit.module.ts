@@ -6,19 +6,19 @@ import {
   Module,
   Provider,
   Logger,
-} from "@nestjs/common";
+} from '@nestjs/common';
 
 import {
   DATABASE_TOKEN,
   DATABASE_OPTIONS_TOKEN,
-} from "./config/database.constants";
+} from './config/database.constants';
 import {
   DatabaseConfig,
   DatabaseKitModuleOptions,
   DatabaseKitModuleAsyncOptions,
-} from "./contracts/database.contracts";
-import { DatabaseService } from "./services/database.service";
-import { LoggerService } from "./services/logger.service";
+} from './contracts/database.contracts';
+import { DatabaseService } from './services/database.service';
+import { LoggerService } from './services/logger.service';
 
 /**
  * DatabaseKitModule - Main NestJS module for DatabaseKit.
@@ -135,7 +135,7 @@ export class DatabaseKitModule {
 
     return {
       module: DatabaseKitModule,
-      imports: (options.imports || []) as DynamicModule["imports"],
+      imports: (options.imports || []) as DynamicModule['imports'],
       providers,
       exports: [DATABASE_TOKEN, LoggerService],
     };

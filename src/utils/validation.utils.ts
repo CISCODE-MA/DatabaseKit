@@ -11,7 +11,7 @@
  * @returns True if valid ObjectId format
  */
 export function isValidMongoId(id: string): boolean {
-  if (!id || typeof id !== "string") return false;
+  if (!id || typeof id !== 'string') return false;
   return /^[a-f\d]{24}$/i.test(id);
 }
 
@@ -22,7 +22,7 @@ export function isValidMongoId(id: string): boolean {
  * @returns True if valid UUID format
  */
 export function isValidUuid(id: string): boolean {
-  if (!id || typeof id !== "string") return false;
+  if (!id || typeof id !== 'string') return false;
   return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     id,
   );
@@ -35,10 +35,10 @@ export function isValidUuid(id: string): boolean {
  * @returns True if positive integer
  */
 export function isPositiveInteger(value: unknown): boolean {
-  if (typeof value === "number") {
+  if (typeof value === 'number') {
     return Number.isInteger(value) && value > 0;
   }
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     const parsed = parseInt(value, 10);
     return !isNaN(parsed) && parsed > 0 && String(parsed) === value;
   }
@@ -79,7 +79,7 @@ export function validateRequiredFields(
   const missing: string[] = [];
 
   for (const field of requiredFields) {
-    if (obj[field] === undefined || obj[field] === null || obj[field] === "") {
+    if (obj[field] === undefined || obj[field] === null || obj[field] === '') {
       missing.push(field);
     }
   }

@@ -43,8 +43,8 @@ A NestJS-friendly, OOP-style database library providing a unified repository API
 Every repository (MongoDB or PostgreSQL) implements the **same interface**:
 
 ```typescript
-const user = await repo.create({ name: "John" }); // Works on both!
-const found = await repo.findById("123"); // Works on both!
+const user = await repo.create({ name: 'John' }); // Works on both!
+const found = await repo.findById('123'); // Works on both!
 const page = await repo.findPage({ page: 1 }); // Works on both!
 ```
 
@@ -114,14 +114,14 @@ npm install pg knex
 
 ```typescript
 // app.module.ts
-import { Module } from "@nestjs/common";
-import { DatabaseKitModule } from "@ciscode/database-kit";
+import { Module } from '@nestjs/common';
+import { DatabaseKitModule } from '@ciscode/database-kit';
 
 @Module({
   imports: [
     DatabaseKitModule.forRoot({
       config: {
-        type: "mongo", // or 'postgres'
+        type: 'mongo', // or 'postgres'
         connectionString: process.env.MONGO_URI!,
       },
     }),
@@ -134,13 +134,13 @@ export class AppModule {}
 
 ```typescript
 // users.service.ts
-import { Injectable } from "@nestjs/common";
+import { Injectable } from '@nestjs/common';
 import {
   InjectDatabase,
   DatabaseService,
   Repository,
-} from "@ciscode/database-kit";
-import { UserModel } from "./user.model";
+} from '@ciscode/database-kit';
+import { UserModel } from './user.model';
 
 interface User {
   _id: string;
@@ -162,11 +162,11 @@ export class UsersService {
       hooks: {
         // Lifecycle hooks
         beforeCreate: (ctx) => {
-          console.log("Creating user:", ctx.data);
+          console.log('Creating user:', ctx.data);
           return ctx.data; // Can modify data
         },
         afterCreate: (user) => {
-          console.log("User created:", user._id);
+          console.log('User created:', user._id);
         },
       },
     });
@@ -190,7 +190,7 @@ export class UsersService {
     return this.usersRepo.findPage({
       page,
       limit,
-      sort: "-createdAt",
+      sort: '-createdAt',
     });
   }
 
@@ -221,12 +221,12 @@ export class UsersService {
 
   // DISTINCT VALUES
   async getUniqueEmails(): Promise<string[]> {
-    return this.usersRepo.distinct("email");
+    return this.usersRepo.distinct('email');
   }
 
   // SELECT SPECIFIC FIELDS
-  async getUserNames(): Promise<Pick<User, "name" | "email">[]> {
-    return this.usersRepo.select({}, ["name", "email"]);
+  async getUserNames(): Promise<Pick<User, 'name' | 'email'>[]> {
+    return this.usersRepo.select({}, ['name', 'email']);
   }
 }
 ```
@@ -290,7 +290,7 @@ const result = await db.getMongoAdapter().withTransaction(
     const userRepo = ctx.createRepository<User>({ model: UserModel });
     const orderRepo = ctx.createRepository<Order>({ model: OrderModel });
 
-    const user = await userRepo.create({ name: "John" });
+    const user = await userRepo.create({ name: 'John' });
     const order = await orderRepo.create({ userId: user._id, total: 99.99 });
 
     return { user, order };
@@ -304,16 +304,16 @@ const result = await db.getMongoAdapter().withTransaction(
 // PostgreSQL Transaction
 const result = await db.getPostgresAdapter().withTransaction(
   async (ctx) => {
-    const userRepo = ctx.createRepository<User>({ table: "users" });
-    const orderRepo = ctx.createRepository<Order>({ table: "orders" });
+    const userRepo = ctx.createRepository<User>({ table: 'users' });
+    const orderRepo = ctx.createRepository<Order>({ table: 'orders' });
 
-    const user = await userRepo.create({ name: "John" });
+    const user = await userRepo.create({ name: 'John' });
     const order = await orderRepo.create({ user_id: user.id, total: 99.99 });
 
     return { user, order };
   },
   {
-    isolationLevel: "serializable",
+    isolationLevel: 'serializable',
   },
 );
 ```
@@ -328,7 +328,7 @@ const repo = db.createMongoRepository<User>({
   hooks: {
     // Before create - can modify data
     beforeCreate: (context) => {
-      console.log("Creating:", context.data);
+      console.log('Creating:', context.data);
       return {
         ...context.data,
         normalizedEmail: context.data.email?.toLowerCase(),
@@ -342,7 +342,7 @@ const repo = db.createMongoRepository<User>({
 
     // Before update - can modify data
     beforeUpdate: (context) => {
-      return { ...context.data, updatedBy: "system" };
+      return { ...context.data, updatedBy: 'system' };
     },
 
     // After update
@@ -352,12 +352,12 @@ const repo = db.createMongoRepository<User>({
 
     // Before delete - for validation
     beforeDelete: (id) => {
-      console.log("Deleting user:", id);
+      console.log('Deleting user:', id);
     },
 
     // After delete
     afterDelete: (success) => {
-      if (success) console.log("User deleted");
+      if (success) console.log('User deleted');
     },
   },
 });
@@ -371,7 +371,7 @@ Fine-tune database connection pooling:
 // MongoDB
 DatabaseKitModule.forRoot({
   config: {
-    type: "mongo",
+    type: 'mongo',
     connectionString: process.env.MONGO_URI!,
     pool: {
       min: 5,
@@ -388,7 +388,7 @@ DatabaseKitModule.forRoot({
 // PostgreSQL
 DatabaseKitModule.forRoot({
   config: {
-    type: "postgres",
+    type: 'postgres',
     connectionString: process.env.DATABASE_URL!,
     pool: {
       min: 2,
@@ -405,7 +405,7 @@ DatabaseKitModule.forRoot({
 Monitor database health in production:
 
 ```typescript
-@Controller("health")
+@Controller('health')
 export class HealthController {
   constructor(@InjectDatabase() private readonly db: DatabaseService) {}
 
@@ -425,7 +425,7 @@ export class HealthController {
     // }
 
     return {
-      status: mongoHealth.healthy ? "healthy" : "unhealthy",
+      status: mongoHealth.healthy ? 'healthy' : 'unhealthy',
       database: mongoHealth,
     };
   }
@@ -440,11 +440,11 @@ Non-destructive deletion with restore capability:
 const repo = db.createMongoRepository<User>({
   model: UserModel,
   softDelete: true, // Enable soft delete
-  softDeleteField: "deletedAt", // Default field name
+  softDeleteField: 'deletedAt', // Default field name
 });
 
 // "Delete" - sets deletedAt timestamp
-await repo.deleteById("123");
+await repo.deleteById('123');
 
 // Regular queries exclude deleted records
 await repo.findAll(); // Only non-deleted users
@@ -453,7 +453,7 @@ await repo.findAll(); // Only non-deleted users
 await repo.findWithDeleted!(); // All users including deleted
 
 // Restore a deleted record
-await repo.restore!("123");
+await repo.restore!('123');
 ```
 
 ### Timestamps
@@ -464,16 +464,16 @@ Automatic created/updated tracking:
 const repo = db.createMongoRepository<User>({
   model: UserModel,
   timestamps: true, // Enable timestamps
-  createdAtField: "createdAt", // Default
-  updatedAtField: "updatedAt", // Default
+  createdAtField: 'createdAt', // Default
+  updatedAtField: 'updatedAt', // Default
 });
 
 // create() automatically sets createdAt
-const user = await repo.create({ name: "John" });
+const user = await repo.create({ name: 'John' });
 // user.createdAt = 2026-02-01T12:00:00.000Z
 
 // updateById() automatically sets updatedAt
-await repo.updateById(user._id, { name: "Johnny" });
+await repo.updateById(user._id, { name: 'Johnny' });
 // user.updatedAt = 2026-02-01T12:01:00.000Z
 ```
 
@@ -488,7 +488,7 @@ Standard MongoDB query syntax:
 ```typescript
 await repo.findAll({
   age: { $gte: 18, $lt: 65 },
-  status: { $in: ["active", "pending"] },
+  status: { $in: ['active', 'pending'] },
   name: { $regex: /john/i },
 });
 ```
@@ -501,18 +501,18 @@ Structured query operators:
 // Comparison
 await repo.findAll({
   price: { gt: 100, lte: 500 }, // > 100 AND <= 500
-  status: { ne: "cancelled" }, // != 'cancelled'
+  status: { ne: 'cancelled' }, // != 'cancelled'
 });
 
 // IN / NOT IN
 await repo.findAll({
-  category: { in: ["electronics", "books"] },
-  brand: { nin: ["unknown"] },
+  category: { in: ['electronics', 'books'] },
+  brand: { nin: ['unknown'] },
 });
 
 // LIKE (case-insensitive)
 await repo.findAll({
-  name: { like: "%widget%" },
+  name: { like: '%widget%' },
 });
 
 // NULL checks
@@ -523,7 +523,7 @@ await repo.findAll({
 
 // Sorting
 await repo.findPage({
-  sort: "-created_at,name", // DESC created_at, ASC name
+  sort: '-created_at,name', // DESC created_at, ASC name
   // or: { created_at: -1, name: 1 }
 });
 ```
@@ -546,17 +546,17 @@ await repo.findPage({
 ### Async Configuration (Recommended)
 
 ```typescript
-import { ConfigModule, ConfigService } from "@nestjs/config";
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 DatabaseKitModule.forRootAsync({
   imports: [ConfigModule],
   useFactory: (config: ConfigService) => ({
     config: {
-      type: config.get("DATABASE_TYPE") as "mongo" | "postgres",
-      connectionString: config.get("DATABASE_URL")!,
+      type: config.get('DATABASE_TYPE') as 'mongo' | 'postgres',
+      connectionString: config.get('DATABASE_URL')!,
       pool: {
-        min: config.get("DATABASE_POOL_MIN", 0),
-        max: config.get("DATABASE_POOL_MAX", 10),
+        min: config.get('DATABASE_POOL_MIN', 0),
+        max: config.get('DATABASE_POOL_MAX', 10),
       },
     },
   }),
@@ -571,11 +571,11 @@ DatabaseKitModule.forRootAsync({
   imports: [
     // Primary database
     DatabaseKitModule.forRoot({
-      config: { type: "mongo", connectionString: process.env.MONGO_URI! },
+      config: { type: 'mongo', connectionString: process.env.MONGO_URI! },
     }),
     // Analytics database (PostgreSQL)
-    DatabaseKitModule.forFeature("ANALYTICS_DB", {
-      type: "postgres",
+    DatabaseKitModule.forFeature('ANALYTICS_DB', {
+      type: 'postgres',
       connectionString: process.env.ANALYTICS_DB_URL!,
     }),
   ],
@@ -586,7 +586,7 @@ export class AppModule {}
 @Injectable()
 export class AnalyticsService {
   constructor(
-    @InjectDatabaseByToken("ANALYTICS_DB")
+    @InjectDatabaseByToken('ANALYTICS_DB')
     private readonly analyticsDb: DatabaseService,
   ) {}
 }
@@ -600,7 +600,7 @@ export class AnalyticsService {
 
 ```typescript
 // main.ts
-import { DatabaseExceptionFilter } from "@ciscode/database-kit";
+import { DatabaseExceptionFilter } from '@ciscode/database-kit';
 
 app.useGlobalFilters(new DatabaseExceptionFilter());
 ```
@@ -629,12 +629,12 @@ import {
   parseSortString,
   calculateOffset,
   createPageResult,
-} from "@ciscode/database-kit";
+} from '@ciscode/database-kit';
 
 const normalized = normalizePaginationOptions({ page: 1 });
 // { page: 1, limit: 10, filter: {}, sort: undefined }
 
-const sortObj = parseSortString("-createdAt,name");
+const sortObj = parseSortString('-createdAt,name');
 // { createdAt: -1, name: 1 }
 
 const offset = calculateOffset(2, 10); // 10
@@ -649,16 +649,16 @@ import {
   sanitizeFilter,
   pickFields,
   omitFields,
-} from "@ciscode/database-kit";
+} from '@ciscode/database-kit';
 
-isValidMongoId("507f1f77bcf86cd799439011"); // true
-isValidUuid("550e8400-e29b-41d4-a716-446655440000"); // true
+isValidMongoId('507f1f77bcf86cd799439011'); // true
+isValidUuid('550e8400-e29b-41d4-a716-446655440000'); // true
 
-const clean = sanitizeFilter({ name: "John", age: undefined });
+const clean = sanitizeFilter({ name: 'John', age: undefined });
 // { name: 'John' }
 
-const picked = pickFields(user, ["name", "email"]);
-const safe = omitFields(user, ["password", "secret"]);
+const picked = pickFields(user, ['name', 'email']);
+const safe = omitFields(user, ['password', 'secret']);
 ```
 
 ---
@@ -679,17 +679,17 @@ npm test -- --testPathPattern=mongo.adapter.spec
 ### Mocking in Tests
 
 ```typescript
-import { Test } from "@nestjs/testing";
-import { DATABASE_TOKEN } from "@ciscode/database-kit";
+import { Test } from '@nestjs/testing';
+import { DATABASE_TOKEN } from '@ciscode/database-kit';
 
 const mockRepository = {
-  create: jest.fn().mockResolvedValue({ id: "1", name: "Test" }),
-  findById: jest.fn().mockResolvedValue({ id: "1", name: "Test" }),
+  create: jest.fn().mockResolvedValue({ id: '1', name: 'Test' }),
+  findById: jest.fn().mockResolvedValue({ id: '1', name: 'Test' }),
   findAll: jest.fn().mockResolvedValue([]),
   findPage: jest
     .fn()
     .mockResolvedValue({ data: [], total: 0, page: 1, limit: 10, pages: 0 }),
-  updateById: jest.fn().mockResolvedValue({ id: "1", name: "Updated" }),
+  updateById: jest.fn().mockResolvedValue({ id: '1', name: 'Updated' }),
   deleteById: jest.fn().mockResolvedValue(true),
 };
 

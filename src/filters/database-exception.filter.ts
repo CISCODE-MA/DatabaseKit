@@ -7,7 +7,7 @@ import {
   HttpException,
   HttpStatus,
   Logger,
-} from "@nestjs/common";
+} from '@nestjs/common';
 
 /**
  * Standard error response format.
@@ -53,7 +53,7 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
       message,
       error,
       timestamp: new Date().toISOString(),
-      path: request?.url || "/",
+      path: request?.url || '/',
     };
 
     // Log the error
@@ -74,7 +74,7 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       const response = exception.getResponse();
       const message =
-        typeof response === "string"
+        typeof response === 'string'
           ? response
           : (response as { message?: string }).message || exception.message;
 
@@ -100,7 +100,7 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
       return {
         statusCode: HttpStatus.BAD_REQUEST,
         message: (exception as { message: string }).message,
-        error: "ValidationError",
+        error: 'ValidationError',
       };
     }
 
@@ -108,16 +108,16 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
     if (exception instanceof Error) {
       return {
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: exception.message || "An unexpected error occurred",
-        error: exception.name || "InternalServerError",
+        message: exception.message || 'An unexpected error occurred',
+        error: exception.name || 'InternalServerError',
       };
     }
 
     // Fallback for unknown errors
     return {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-      message: "An unexpected error occurred",
-      error: "InternalServerError",
+      message: 'An unexpected error occurred',
+      error: 'InternalServerError',
     };
   }
 
@@ -125,14 +125,14 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
    * Checks if the exception is a MongoDB error.
    */
   private isMongoError(exception: unknown): boolean {
-    if (!exception || typeof exception !== "object") return false;
+    if (!exception || typeof exception !== 'object') return false;
     const err = exception as { name?: string };
     return (
-      err.name === "MongoError" ||
-      err.name === "MongoServerError" ||
-      err.name === "MongooseError" ||
-      err.name === "CastError" ||
-      err.name === "ValidationError"
+      err.name === 'MongoError' ||
+      err.name === 'MongoServerError' ||
+      err.name === 'MongooseError' ||
+      err.name === 'CastError' ||
+      err.name === 'ValidationError'
     );
   }
 
@@ -150,33 +150,33 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
     if (err.code === 11000) {
       return {
         statusCode: HttpStatus.CONFLICT,
-        message: "A record with this value already exists",
-        error: "DuplicateKeyError",
+        message: 'A record with this value already exists',
+        error: 'DuplicateKeyError',
       };
     }
 
     // Cast error (invalid ObjectId, etc.)
-    if (err.name === "CastError") {
+    if (err.name === 'CastError') {
       return {
         statusCode: HttpStatus.BAD_REQUEST,
-        message: "Invalid ID format",
-        error: "CastError",
+        message: 'Invalid ID format',
+        error: 'CastError',
       };
     }
 
     // Mongoose validation error
-    if (err.name === "ValidationError") {
+    if (err.name === 'ValidationError') {
       return {
         statusCode: HttpStatus.BAD_REQUEST,
         message: err.message,
-        error: "ValidationError",
+        error: 'ValidationError',
       };
     }
 
     return {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-      message: "Database operation failed",
-      error: "DatabaseError",
+      message: 'Database operation failed',
+      error: 'DatabaseError',
     };
   }
 
@@ -184,10 +184,10 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
    * Checks if the exception is a Knex/PostgreSQL error.
    */
   private isKnexError(exception: unknown): boolean {
-    if (!exception || typeof exception !== "object") return false;
+    if (!exception || typeof exception !== 'object') return false;
     const err = exception as { code?: string };
     // PostgreSQL error codes start with numbers
-    return typeof err.code === "string" && /^[0-9A-Z]{5}$/.test(err.code);
+    return typeof err.code === 'string' && /^[0-9A-Z]{5}$/.test(err.code);
   }
 
   /**
@@ -205,54 +205,54 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
     };
 
     // Unique constraint violation
-    if (err.code === "23505") {
+    if (err.code === '23505') {
       return {
         statusCode: HttpStatus.CONFLICT,
-        message: `A record with this value already exists${err.constraint ? ` (${err.constraint})` : ""}`,
-        error: "UniqueConstraintViolation",
+        message: `A record with this value already exists${err.constraint ? ` (${err.constraint})` : ''}`,
+        error: 'UniqueConstraintViolation',
       };
     }
 
     // Foreign key violation
-    if (err.code === "23503") {
+    if (err.code === '23503') {
       return {
         statusCode: HttpStatus.BAD_REQUEST,
-        message: "Referenced record does not exist",
-        error: "ForeignKeyViolation",
+        message: 'Referenced record does not exist',
+        error: 'ForeignKeyViolation',
       };
     }
 
     // Not null violation
-    if (err.code === "23502") {
+    if (err.code === '23502') {
       return {
         statusCode: HttpStatus.BAD_REQUEST,
-        message: "Required field is missing",
-        error: "NotNullViolation",
+        message: 'Required field is missing',
+        error: 'NotNullViolation',
       };
     }
 
     // Check constraint violation
-    if (err.code === "23514") {
+    if (err.code === '23514') {
       return {
         statusCode: HttpStatus.BAD_REQUEST,
-        message: "Value does not meet constraint requirements",
-        error: "CheckConstraintViolation",
+        message: 'Value does not meet constraint requirements',
+        error: 'CheckConstraintViolation',
       };
     }
 
     // Connection errors
-    if (err.code === "08006" || err.code === "08001" || err.code === "08004") {
+    if (err.code === '08006' || err.code === '08001' || err.code === '08004') {
       return {
         statusCode: HttpStatus.SERVICE_UNAVAILABLE,
-        message: "Database connection error",
-        error: "ConnectionError",
+        message: 'Database connection error',
+        error: 'ConnectionError',
       };
     }
 
     return {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-      message: "Database operation failed",
-      error: "DatabaseError",
+      message: 'Database operation failed',
+      error: 'DatabaseError',
     };
   }
 
@@ -260,9 +260,9 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
    * Checks if the exception is a validation error.
    */
   private isValidationError(exception: unknown): boolean {
-    if (!exception || typeof exception !== "object") return false;
+    if (!exception || typeof exception !== 'object') return false;
     const err = exception as { name?: string };
-    return err.name === "ValidationError";
+    return err.name === 'ValidationError';
   }
 
   /**

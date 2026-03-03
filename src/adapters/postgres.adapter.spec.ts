@@ -1,11 +1,16 @@
-import type { Knex } from "knex";
+import type { Knex } from 'knex';
 
 import type {
   PostgresDatabaseConfig,
   PostgresTransactionContext,
-} from "../contracts/database.contracts";
+} from '../contracts/database.contracts';
+import {
+  createMockKnex,
+  testSoftDeleteMethods,
+  testRepositoryMethods,
+} from '../test/test.utils';
 
-import { PostgresAdapter } from "./postgres.adapter";
+import { PostgresAdapter } from './postgres.adapter';
 
 // Mock knex
 const mockTrx = {
@@ -15,8 +20,8 @@ const mockTrx = {
   update: jest.fn().mockReturnThis(),
   delete: jest.fn().mockReturnThis(),
   where: jest.fn().mockReturnThis(),
-  returning: jest.fn().mockResolvedValue([{ id: 1, name: "test" }]),
-  first: jest.fn().mockResolvedValue({ id: 1, name: "test" }),
+  returning: jest.fn().mockResolvedValue([{ id: 1, name: 'test' }]),
+  first: jest.fn().mockResolvedValue({ id: 1, name: 'test' }),
 };
 
 const mockKnexInstance = jest.fn((_tableName: string) => ({
@@ -37,8 +42,8 @@ const mockKnexInstance = jest.fn((_tableName: string) => ({
   count: jest.fn().mockReturnThis(),
   modify: jest.fn().mockReturnThis(),
   clone: jest.fn().mockReturnThis(),
-  returning: jest.fn().mockResolvedValue([{ id: 1, name: "test" }]),
-  first: jest.fn().mockResolvedValue({ id: 1, name: "test" }),
+  returning: jest.fn().mockResolvedValue([{ id: 1, name: 'test' }]),
+  first: jest.fn().mockResolvedValue({ id: 1, name: 'test' }),
 })) as unknown as Knex;
 
 // Add transaction method to mock
@@ -56,15 +61,15 @@ const mockKnexInstance = jest.fn((_tableName: string) => ({
   .fn()
   .mockResolvedValue(undefined);
 
-jest.mock("knex", () => {
+jest.mock('knex', () => {
   return jest.fn(() => mockKnexInstance);
 });
 
-describe("PostgresAdapter", () => {
+describe('PostgresAdapter', () => {
   let adapter: PostgresAdapter;
   const mockConfig: PostgresDatabaseConfig = {
-    type: "postgres",
-    connectionString: "postgresql://localhost:5432/testdb",
+    type: 'postgres',
+    connectionString: 'postgresql://localhost:5432/testdb',
   };
 
   // Test interface for typed repositories
@@ -83,133 +88,121 @@ describe("PostgresAdapter", () => {
 
   afterEach(async () => {
     // Reset the knexInstance to avoid disconnect issues with mocks
-    adapter["knexInstance"] = undefined;
+    adapter['knexInstance'] = undefined;
   });
 
-  describe("constructor", () => {
-    it("should create adapter instance", () => {
+  describe('constructor', () => {
+    it('should create adapter instance', () => {
       expect(adapter).toBeDefined();
       expect(adapter).toBeInstanceOf(PostgresAdapter);
     });
   });
 
-  describe("isConnected", () => {
-    it("should return false when not connected", () => {
+  describe('isConnected', () => {
+    it('should return false when not connected', () => {
       expect(adapter.isConnected()).toBe(false);
     });
 
-    it("should return true when connected", () => {
+    it('should return true when connected', () => {
       adapter.connect();
       expect(adapter.isConnected()).toBe(true);
     });
   });
 
-  describe("connect", () => {
-    it("should create Knex instance", () => {
+  describe('connect', () => {
+    it('should create Knex instance', () => {
       const knex = adapter.connect();
       expect(knex).toBeDefined();
     });
 
-    it("should reuse existing connection", () => {
+    it('should reuse existing connection', () => {
       const knex1 = adapter.connect();
       const knex2 = adapter.connect();
       expect(knex1).toBe(knex2);
     });
   });
 
-  describe("disconnect", () => {
-    it("should destroy Knex instance", async () => {
+  describe('disconnect', () => {
+    it('should destroy Knex instance', async () => {
       adapter.connect();
       await adapter.disconnect();
       expect(adapter.isConnected()).toBe(false);
     });
   });
 
-  describe("getKnex", () => {
-    it("should throw when not connected", () => {
-      expect(() => adapter.getKnex()).toThrow("PostgreSQL not connected");
+  describe('getKnex', () => {
+    it('should throw when not connected', () => {
+      expect(() => adapter.getKnex()).toThrow('PostgreSQL not connected');
     });
 
-    it("should return Knex instance when connected", () => {
+    it('should return Knex instance when connected', () => {
       adapter.connect();
       expect(adapter.getKnex()).toBeDefined();
     });
   });
 
-  describe("createRepository", () => {
+  describe('createRepository', () => {
     beforeEach(() => {
       adapter.connect();
     });
 
-    it("should create a repository with all CRUD methods", () => {
+    it('should create a repository with all CRUD methods', () => {
       const repo = adapter.createRepository({
-        table: "users",
-        primaryKey: "id",
-        columns: ["id", "name", "email"],
+        table: 'users',
+        primaryKey: 'id',
+        columns: ['id', 'name', 'email'],
       });
 
-      expect(repo).toBeDefined();
-      expect(typeof repo.create).toBe("function");
-      expect(typeof repo.findById).toBe("function");
-      expect(typeof repo.findAll).toBe("function");
-      expect(typeof repo.findPage).toBe("function");
-      expect(typeof repo.updateById).toBe("function");
-      expect(typeof repo.deleteById).toBe("function");
-      expect(typeof repo.count).toBe("function");
-      expect(typeof repo.exists).toBe("function");
-      // Bulk operations
-      expect(typeof repo.insertMany).toBe("function");
-      expect(typeof repo.updateMany).toBe("function");
-      expect(typeof repo.deleteMany).toBe("function");
+      testRepositoryMethods(repo);
     });
 
-    it("should use default primary key when not specified", () => {
+    it('should use default primary key when not specified', () => {
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
       });
 
       expect(repo).toBeDefined();
     });
 
-    it("should have insertMany method that returns array", async () => {
-      const repo = adapter.createRepository({ table: "users" });
+    it('should have insertMany method that returns array', async () => {
+      const repo = adapter.createRepository({ table: 'users' });
 
       // Test that insertMany returns an array (mock returns array)
       const result = await repo.insertMany([
-        { name: "John" },
-        { name: "Jane" },
+        { name: 'John' },
+        { name: 'Jane' },
       ]);
       expect(Array.isArray(result)).toBe(true);
     });
 
-    it("should return empty array when insertMany with empty data", async () => {
-      const repo = adapter.createRepository({ table: "users" });
+    it('should return empty array when insertMany with empty data', async () => {
+      const repo = adapter.createRepository({ table: 'users' });
 
       const result = await repo.insertMany([]);
       expect(result).toEqual([]);
     });
 
-    it("should have updateMany method that returns count", async () => {
-      const repo = adapter.createRepository({ table: "users" });
+    it('should have updateMany method that returns count', async () => {
+      const repo = adapter.createRepository({ table: 'users' });
 
       // updateMany method exists
-      expect(typeof repo.updateMany).toBe("function");
+      expect(typeof repo.updateMany).toBe('function');
     });
 
-    it("should have deleteMany method that returns count", async () => {
-      const repo = adapter.createRepository({ table: "users" });
+    it('should have deleteMany method that returns count', async () => {
+      const repo = adapter.createRepository({ table: 'users' });
 
       // deleteMany method exists
-      expect(typeof repo.deleteMany).toBe("function");
+      expect(typeof repo.deleteMany).toBe('function');
     });
   });
 
-  describe("withTransaction", () => {
+  describe('withTransaction', () => {
     beforeEach(() => {
       adapter.connect();
     });
 
-    it("should execute callback within transaction", async () => {
+    it('should execute callback within transaction', async () => {
       const mockCallback = jest.fn().mockResolvedValue({ success: true });
 
       const result = await adapter.withTransaction(mockCallback);
@@ -223,86 +216,84 @@ describe("PostgresAdapter", () => {
       );
     });
 
-    it("should set statement timeout in transaction", async () => {
-      await adapter.withTransaction(async () => "result", { timeout: 15000 });
+    it('should set statement timeout in transaction', async () => {
+      await adapter.withTransaction(async () => 'result', { timeout: 15000 });
 
       expect(mockTrx.raw).toHaveBeenCalledWith(
-        "SET LOCAL statement_timeout = 15000",
+        'SET LOCAL statement_timeout = 15000',
       );
     });
 
-    it("should provide transaction context with createRepository", async () => {
+    it('should provide transaction context with createRepository', async () => {
       let capturedContext: PostgresTransactionContext | undefined;
 
       await adapter.withTransaction(async (ctx) => {
         capturedContext = ctx;
-        return "done";
+        return 'done';
       });
 
       expect(capturedContext).toBeDefined();
-      expect(capturedContext!.transaction).toBeDefined();
-      expect(typeof capturedContext!.createRepository).toBe("function");
     });
 
-    it("should propagate errors from callback", async () => {
-      const error = new Error("Test error");
+    it('should propagate errors from callback', async () => {
+      const error = new Error('Test error');
 
       await expect(
         adapter.withTransaction(async () => {
           throw error;
         }),
-      ).rejects.toThrow("Test error");
+      ).rejects.toThrow('Test error');
     });
 
-    it("should support isolation levels", async () => {
+    it('should support isolation levels', async () => {
       const mockTransaction = (
         mockKnexInstance as unknown as { transaction: jest.Mock }
       ).transaction;
 
-      await adapter.withTransaction(async () => "result", {
-        isolationLevel: "serializable",
+      await adapter.withTransaction(async () => 'result', {
+        isolationLevel: 'serializable',
       });
 
       expect(mockTransaction).toHaveBeenCalledWith(expect.any(Function), {
-        isolationLevel: "serializable",
+        isolationLevel: 'serializable',
       });
     });
 
-    it("should use default isolation level when not specified", async () => {
+    it('should use default isolation level when not specified', async () => {
       const mockTransaction = (
         mockKnexInstance as unknown as { transaction: jest.Mock }
       ).transaction;
 
-      await adapter.withTransaction(async () => "result");
+      await adapter.withTransaction(async () => 'result');
 
       expect(mockTransaction).toHaveBeenCalledWith(expect.any(Function), {
-        isolationLevel: "read committed",
+        isolationLevel: 'read committed',
       });
     });
   });
 
-  describe("healthCheck", () => {
-    it("should return unhealthy when not connected", async () => {
+  describe('healthCheck', () => {
+    it('should return unhealthy when not connected', async () => {
       const result = await adapter.healthCheck();
 
       expect(result.healthy).toBe(false);
-      expect(result.type).toBe("postgres");
-      expect(result.error).toBe("Not connected to PostgreSQL");
+      expect(result.type).toBe('postgres');
+      expect(result.error).toBe('Not connected to PostgreSQL');
       expect(result.responseTimeMs).toBeGreaterThanOrEqual(0);
     });
 
-    it("should have healthCheck method", () => {
-      expect(typeof adapter.healthCheck).toBe("function");
+    it('should have healthCheck method', () => {
+      expect(typeof adapter.healthCheck).toBe('function');
     });
 
-    it("should return response time in result", async () => {
+    it('should return response time in result', async () => {
       const result = await adapter.healthCheck();
 
-      expect(typeof result.responseTimeMs).toBe("number");
+      expect(typeof result.responseTimeMs).toBe('number');
       expect(result.responseTimeMs).toBeGreaterThanOrEqual(0);
     });
 
-    it("should return healthy result when connected", async () => {
+    it('should return healthy result when connected', async () => {
       // Create a fresh adapter and set up raw mock before health check
       const freshAdapter = new PostgresAdapter(mockConfig);
       freshAdapter.connect();
@@ -311,118 +302,106 @@ describe("PostgresAdapter", () => {
       // that healthCheck returns something when connected
       const result = await freshAdapter.healthCheck();
 
-      expect(result.type).toBe("postgres");
+      expect(result.type).toBe('postgres');
       expect(result.responseTimeMs).toBeGreaterThanOrEqual(0);
       // Note: In real tests with actual DB, this would be true
       // With mocks, we're just verifying the method works
     });
   });
 
-  describe("Soft Delete", () => {
-    it("should not have soft delete methods when softDelete is disabled", () => {
+  describe('Soft Delete', () => {
+    it('should not have soft delete methods when softDelete is disabled', () => {
       adapter.connect();
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
         softDelete: false,
       });
-
-      expect(repo.softDelete).toBeUndefined();
-      expect(repo.softDeleteMany).toBeUndefined();
-      expect(repo.restore).toBeUndefined();
-      expect(repo.restoreMany).toBeUndefined();
-      expect(repo.findAllWithDeleted).toBeUndefined();
-      expect(repo.findDeleted).toBeUndefined();
+      testSoftDeleteMethods(repo, false);
     });
 
-    it("should have soft delete methods when softDelete is enabled", () => {
+    it('should have soft delete methods when softDelete is enabled', () => {
       adapter.connect();
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
+        softDelete: true,
+      });
+      testSoftDeleteMethods(repo, true);
+    });
+
+    it('should soft delete a record by setting deleted_at', async () => {
+      adapter.connect();
+      const repo = adapter.createRepository({
+        table: 'users',
         softDelete: true,
       });
 
-      expect(typeof repo.softDelete).toBe("function");
-      expect(typeof repo.softDeleteMany).toBe("function");
-      expect(typeof repo.restore).toBe("function");
-      expect(typeof repo.restoreMany).toBe("function");
-      expect(typeof repo.findAllWithDeleted).toBe("function");
-      expect(typeof repo.findDeleted).toBe("function");
-    });
-
-    it("should soft delete a record by setting deleted_at", async () => {
-      adapter.connect();
-      const repo = adapter.createRepository({
-        table: "users",
-        softDelete: true,
-      });
-
-      await repo.softDelete!("123");
+      await repo.softDelete?.('123');
 
       // Verify that update was called (soft delete sets timestamp instead of deleting)
       const knexTableMock = mockKnexInstance as unknown as jest.Mock;
-      expect(knexTableMock).toHaveBeenCalledWith("users");
+      expect(knexTableMock).toHaveBeenCalledWith('users');
     });
 
-    it("should use custom softDeleteField", () => {
+    it('should use custom softDeleteField', () => {
       adapter.connect();
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
         softDelete: true,
-        softDeleteField: "removed_at",
+        softDeleteField: 'removed_at',
       });
 
       // Verify soft delete methods are available with custom field
-      expect(typeof repo.softDelete).toBe("function");
-      expect(typeof repo.restore).toBe("function");
+      expect(typeof repo.softDelete).toBe('function');
+      expect(typeof repo.restore).toBe('function');
     });
 
-    it("should provide restore method when soft delete is enabled", () => {
+    it('should provide restore method when soft delete is enabled', () => {
       adapter.connect();
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
         softDelete: true,
       });
 
-      expect(typeof repo.restore).toBe("function");
-      expect(typeof repo.restoreMany).toBe("function");
+      expect(typeof repo.restore).toBe('function');
+      expect(typeof repo.restoreMany).toBe('function');
     });
 
-    it("should provide findDeleted method when soft delete is enabled", () => {
+    it('should provide findDeleted method when soft delete is enabled', () => {
       adapter.connect();
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
         softDelete: true,
       });
 
-      expect(typeof repo.findDeleted).toBe("function");
+      expect(typeof repo.findDeleted).toBe('function');
     });
 
-    it("should provide findAllWithDeleted method when soft delete is enabled", () => {
+    it('should provide findAllWithDeleted method when soft delete is enabled', () => {
       adapter.connect();
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
         softDelete: true,
       });
 
-      expect(typeof repo.findAllWithDeleted).toBe("function");
+      expect(typeof repo.findAllWithDeleted).toBe('function');
     });
 
-    it("should provide softDeleteMany method when soft delete is enabled", () => {
+    it('should provide softDeleteMany method when soft delete is enabled', () => {
       adapter.connect();
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
         softDelete: true,
       });
 
-      expect(typeof repo.softDeleteMany).toBe("function");
+      expect(typeof repo.softDeleteMany).toBe('function');
     });
 
-    it("should have all soft delete methods defined correctly", () => {
+    it('should have all soft delete methods defined correctly', () => {
       adapter.connect();
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
         softDelete: true,
-        columns: ["id", "name", "deleted_at"],
+        columns: ['id', 'name', 'deleted_at'],
       });
 
       // All soft delete methods should be defined
@@ -434,77 +413,77 @@ describe("PostgresAdapter", () => {
       expect(repo.findDeleted).toBeDefined();
 
       // They should all be functions
-      expect(typeof repo.softDelete).toBe("function");
-      expect(typeof repo.softDeleteMany).toBe("function");
-      expect(typeof repo.restore).toBe("function");
-      expect(typeof repo.restoreMany).toBe("function");
-      expect(typeof repo.findAllWithDeleted).toBe("function");
-      expect(typeof repo.findDeleted).toBe("function");
+      expect(typeof repo.softDelete).toBe('function');
+      expect(typeof repo.softDeleteMany).toBe('function');
+      expect(typeof repo.restore).toBe('function');
+      expect(typeof repo.restoreMany).toBe('function');
+      expect(typeof repo.findAllWithDeleted).toBe('function');
+      expect(typeof repo.findDeleted).toBe('function');
     });
   });
 
-  describe("Timestamps", () => {
-    it("should accept timestamps configuration option", () => {
+  describe('Timestamps', () => {
+    it('should accept timestamps configuration option', () => {
       adapter.connect();
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
         timestamps: true,
       });
 
       expect(repo).toBeDefined();
-      expect(typeof repo.create).toBe("function");
+      expect(typeof repo.create).toBe('function');
     });
 
-    it("should accept custom timestamp field names", () => {
+    it('should accept custom timestamp field names', () => {
       adapter.connect();
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
         timestamps: true,
-        createdAtField: "date_created",
-        updatedAtField: "date_modified",
+        createdAtField: 'date_created',
+        updatedAtField: 'date_modified',
       });
 
       expect(repo).toBeDefined();
     });
 
-    it("should have all CRUD methods when timestamps enabled", () => {
+    it('should have all CRUD methods when timestamps enabled', () => {
       adapter.connect();
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
         timestamps: true,
       });
 
-      expect(typeof repo.create).toBe("function");
-      expect(typeof repo.findById).toBe("function");
-      expect(typeof repo.findAll).toBe("function");
-      expect(typeof repo.findPage).toBe("function");
-      expect(typeof repo.updateById).toBe("function");
-      expect(typeof repo.deleteById).toBe("function");
-      expect(typeof repo.insertMany).toBe("function");
-      expect(typeof repo.updateMany).toBe("function");
-      expect(typeof repo.deleteMany).toBe("function");
+      expect(typeof repo.create).toBe('function');
+      expect(typeof repo.findById).toBe('function');
+      expect(typeof repo.findAll).toBe('function');
+      expect(typeof repo.findPage).toBe('function');
+      expect(typeof repo.updateById).toBe('function');
+      expect(typeof repo.deleteById).toBe('function');
+      expect(typeof repo.insertMany).toBe('function');
+      expect(typeof repo.updateMany).toBe('function');
+      expect(typeof repo.deleteMany).toBe('function');
     });
 
-    it("should work with both timestamps and soft delete enabled", () => {
+    it('should work with both timestamps and soft delete enabled', () => {
       adapter.connect();
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
         timestamps: true,
         softDelete: true,
-        columns: ["id", "name", "created_at", "updated_at", "deleted_at"],
+        columns: ['id', 'name', 'created_at', 'updated_at', 'deleted_at'],
       });
 
       expect(repo).toBeDefined();
-      expect(typeof repo.create).toBe("function");
-      expect(typeof repo.softDelete).toBe("function");
-      expect(typeof repo.restore).toBe("function");
+      expect(typeof repo.create).toBe('function');
+      expect(typeof repo.softDelete).toBe('function');
+      expect(typeof repo.restore).toBe('function');
     });
 
-    it("should use default field names when not specified", () => {
+    it('should use default field names when not specified', () => {
       adapter.connect();
       // Default: created_at, updated_at for PostgreSQL
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
         timestamps: true,
       });
 
@@ -512,10 +491,10 @@ describe("PostgresAdapter", () => {
     });
   });
 
-  describe("Advanced Query Operations", () => {
-    describe("findOne", () => {
-      it("should find one row by filter", async () => {
-        const mockRow = { id: 1, name: "John", email: "john@example.com" };
+  describe('Advanced Query Operations', () => {
+    describe('findOne', () => {
+      it('should find one row by filter', async () => {
+        const mockRow = { id: 1, name: 'John', email: 'john@example.com' };
         const mockQb = {
           select: jest.fn().mockReturnThis(),
           where: jest.fn().mockReturnThis(),
@@ -524,46 +503,42 @@ describe("PostgresAdapter", () => {
         };
 
         const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-        adapter["knexInstance"] = mockKnex;
+        adapter['knexInstance'] = mockKnex;
 
         const repo = adapter.createRepository({
-          table: "users",
-          columns: ["id", "name", "email"],
+          table: 'users',
+          columns: ['id', 'name', 'email'],
         });
-        const result = await repo.findOne({ email: "john@example.com" });
+        const result = await repo.findOne({ email: 'john@example.com' });
 
-        expect(mockQb.select).toHaveBeenCalledWith("*");
-        expect(mockQb.where).toHaveBeenCalledWith("email", "john@example.com");
+        expect(mockQb.select).toHaveBeenCalledWith('*');
+        expect(mockQb.where).toHaveBeenCalledWith('email', 'john@example.com');
         expect(result).toEqual(mockRow);
       });
 
-      it("should return null when findOne finds nothing", async () => {
-        const mockQb = {
-          select: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
+      it('should return null when findOne finds nothing', async () => {
+        const { mockKnex } = createMockKnex({
           first: jest.fn().mockResolvedValue(undefined),
-        };
-
-        const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-        adapter["knexInstance"] = mockKnex;
+        });
+        adapter['knexInstance'] = mockKnex as unknown as Knex;
 
         const repo = adapter.createRepository({
-          table: "users",
-          columns: ["email"],
+          table: 'users',
+          columns: ['email'],
         });
-        const result = await repo.findOne({ email: "nonexistent@example.com" });
+        const result = await repo.findOne({ email: 'nonexistent@example.com' });
 
         expect(result).toBeNull();
       });
     });
 
-    describe("upsert", () => {
-      it("should update existing row", async () => {
-        const existingRow = { id: 1, name: "John", email: "john@example.com" };
+    describe('upsert', () => {
+      it('should update existing row', async () => {
+        const existingRow = { id: 1, name: 'John', email: 'john@example.com' };
         const updatedRow = {
           id: 1,
-          name: "John Updated",
-          email: "john@example.com",
+          name: 'John Updated',
+          email: 'john@example.com',
         };
 
         const mockSelectQb = {
@@ -584,22 +559,22 @@ describe("PostgresAdapter", () => {
           return callCount === 1 ? mockSelectQb : mockUpdateQb;
         }) as unknown as Knex;
 
-        adapter["knexInstance"] = mockKnex;
+        adapter['knexInstance'] = mockKnex;
 
         const repo = adapter.createRepository({
-          table: "users",
-          columns: ["id", "name", "email"],
+          table: 'users',
+          columns: ['id', 'name', 'email'],
         });
         const result = await repo.upsert(
-          { email: "john@example.com" },
-          { name: "John Updated" },
+          { email: 'john@example.com' },
+          { name: 'John Updated' },
         );
 
         expect(result).toEqual(updatedRow);
       });
 
-      it("should insert new row when not exists", async () => {
-        const newRow = { id: 1, name: "New User", email: "new@example.com" };
+      it('should insert new row when not exists', async () => {
+        const newRow = { id: 1, name: 'New User', email: 'new@example.com' };
 
         const mockSelectQb = {
           select: jest.fn().mockReturnThis(),
@@ -618,25 +593,25 @@ describe("PostgresAdapter", () => {
           return callCount === 1 ? mockSelectQb : mockInsertQb;
         }) as unknown as Knex;
 
-        adapter["knexInstance"] = mockKnex;
+        adapter['knexInstance'] = mockKnex;
 
         const repo = adapter.createRepository({
-          table: "users",
-          columns: ["id", "name", "email"],
+          table: 'users',
+          columns: ['id', 'name', 'email'],
         });
         const result = await repo.upsert(
-          { email: "new@example.com" },
-          { name: "New User" },
+          { email: 'new@example.com' },
+          { name: 'New User' },
         );
 
         expect(result).toEqual(newRow);
       });
     });
 
-    describe("distinct", () => {
-      it("should return distinct values for a column", async () => {
-        const mockRows = [{ status: "active" }, { status: "pending" }];
-        const mockQb = {
+    describe('distinct', () => {
+      it('should return distinct values for a column', async () => {
+        const mockRows = [{ status: 'active' }, { status: 'pending' }];
+        const { mockKnex, mockQb } = createMockKnex({
           distinct: jest.fn().mockReturnThis(),
           modify: jest.fn().mockImplementation(function (
             this: unknown,
@@ -645,28 +620,25 @@ describe("PostgresAdapter", () => {
             fn(this);
             return Promise.resolve(mockRows);
           }),
-          where: jest.fn().mockReturnThis(),
-        };
-
-        const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-        adapter["knexInstance"] = mockKnex;
+        });
+        adapter['knexInstance'] = mockKnex as unknown as Knex;
 
         const repo = adapter.createRepository<TestUser>({
-          table: "users",
-          columns: ["status"],
+          table: 'users',
+          columns: ['status'],
         });
-        const result = await repo.distinct("status");
+        const result = await repo.distinct('status');
 
-        expect(mockQb.distinct).toHaveBeenCalledWith("status");
-        expect(result).toEqual(["active", "pending"]);
+        expect(mockQb.distinct).toHaveBeenCalledWith('status');
+        expect(result).toEqual(['active', 'pending']);
       });
     });
 
-    describe("select", () => {
-      it("should return rows with only selected columns", async () => {
+    describe('select', () => {
+      it('should return rows with only selected columns', async () => {
         const mockRows = [
-          { name: "John", email: "john@example.com" },
-          { name: "Jane", email: "jane@example.com" },
+          { name: 'John', email: 'john@example.com' },
+          { name: 'Jane', email: 'jane@example.com' },
         ];
         const mockQb = {
           select: jest.fn().mockReturnThis(),
@@ -681,137 +653,123 @@ describe("PostgresAdapter", () => {
         };
 
         const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-        adapter["knexInstance"] = mockKnex;
+        adapter['knexInstance'] = mockKnex;
 
         const repo = adapter.createRepository<TestUser>({
-          table: "users",
-          columns: ["name", "email", "active"],
+          table: 'users',
+          columns: ['name', 'email', 'active'],
         });
-        const result = await repo.select({ active: true }, ["name", "email"]);
+        const result = await repo.select({ active: true }, ['name', 'email']);
 
-        expect(mockQb.select).toHaveBeenCalledWith(["name", "email"]);
+        expect(mockQb.select).toHaveBeenCalledWith(['name', 'email']);
         expect(result).toEqual(mockRows);
       });
     });
   });
 
-  describe("Repository Hooks", () => {
-    it("should call beforeCreate hook and use modified data", async () => {
-      const mockRow = { id: 1, name: "MODIFIED" };
-      const mockQb = {
-        insert: jest.fn().mockReturnThis(),
+  describe('Repository Hooks', () => {
+    it('should call beforeCreate hook and use modified data', async () => {
+      const mockRow = { id: 1, name: 'MODIFIED' };
+      const { mockKnex, mockQb } = createMockKnex({
         returning: jest.fn().mockResolvedValue([mockRow]),
-      };
-
-      const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter["knexInstance"] = mockKnex;
+      });
+      adapter['knexInstance'] = mockKnex as unknown as Knex;
 
       const beforeCreate = jest.fn().mockImplementation((context) => ({
         ...context.data,
-        name: "MODIFIED",
+        name: 'MODIFIED',
       }));
 
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
         hooks: { beforeCreate },
       });
-      await repo.create({ name: "Original" });
+      await repo.create({ name: 'Original' });
 
       expect(beforeCreate).toHaveBeenCalledWith({
-        data: { name: "Original" },
-        operation: "create",
+        data: { name: 'Original' },
+        operation: 'create',
         isBulk: false,
       });
       expect(mockQb.insert).toHaveBeenCalledWith(
-        expect.objectContaining({ name: "MODIFIED" }),
+        expect.objectContaining({ name: 'MODIFIED' }),
       );
     });
 
-    it("should call afterCreate hook with created entity", async () => {
-      const mockRow = { id: 1, name: "Test" };
+    it('should call afterCreate hook with created entity', async () => {
+      const mockRow = { id: 1, name: 'Test' };
       const mockQb = {
         insert: jest.fn().mockReturnThis(),
         returning: jest.fn().mockResolvedValue([mockRow]),
       };
 
       const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter["knexInstance"] = mockKnex;
+      adapter['knexInstance'] = mockKnex;
 
       const afterCreate = jest.fn();
 
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
         hooks: { afterCreate },
       });
-      await repo.create({ name: "Test" });
+      await repo.create({ name: 'Test' });
 
-      expect(afterCreate).toHaveBeenCalledWith({ id: 1, name: "Test" });
+      expect(afterCreate).toHaveBeenCalledWith({ id: 1, name: 'Test' });
     });
 
-    it("should call beforeUpdate hook and use modified data", async () => {
-      const mockRow = { id: 1, name: "UPDATED" };
-      const mockQb = {
-        where: jest.fn().mockReturnThis(),
-        update: jest.fn().mockReturnThis(),
+    it('should call beforeUpdate hook and use modified data', async () => {
+      const mockRow = { id: 1, name: 'UPDATED' };
+      const { mockKnex } = createMockKnex({
         returning: jest.fn().mockResolvedValue([mockRow]),
-      };
-
-      const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter["knexInstance"] = mockKnex;
+      });
+      adapter['knexInstance'] = mockKnex as unknown as Knex;
 
       const beforeUpdate = jest.fn().mockImplementation((context) => ({
         ...context.data,
-        name: "UPDATED",
+        name: 'UPDATED',
       }));
 
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
         hooks: { beforeUpdate },
       });
-      await repo.updateById(1, { name: "Original" });
+      await repo.updateById(1, { name: 'Original' });
 
       expect(beforeUpdate).toHaveBeenCalledWith({
-        data: { name: "Original" },
-        operation: "update",
+        data: { name: 'Original' },
+        operation: 'update',
         isBulk: false,
       });
     });
 
-    it("should call afterUpdate hook with updated entity", async () => {
-      const mockRow = { id: 1, name: "Updated" };
-      const mockQb = {
-        where: jest.fn().mockReturnThis(),
-        update: jest.fn().mockReturnThis(),
+    it('should call afterUpdate hook with updated entity', async () => {
+      const mockRow = { id: 1, name: 'Updated' };
+      const { mockKnex } = createMockKnex({
         returning: jest.fn().mockResolvedValue([mockRow]),
-      };
-
-      const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter["knexInstance"] = mockKnex;
+      });
+      adapter['knexInstance'] = mockKnex as unknown as Knex;
 
       const afterUpdate = jest.fn();
 
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
         hooks: { afterUpdate },
       });
-      await repo.updateById(1, { name: "Updated" });
+      await repo.updateById(1, { name: 'Updated' });
 
       expect(afterUpdate).toHaveBeenCalledWith(mockRow);
     });
 
-    it("should call beforeDelete hook with entity id", async () => {
-      const mockQb = {
-        where: jest.fn().mockReturnThis(),
+    it('should call beforeDelete hook with entity id', async () => {
+      const { mockKnex } = createMockKnex({
         delete: jest.fn().mockResolvedValue(1),
-      };
-
-      const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter["knexInstance"] = mockKnex;
+      });
+      adapter['knexInstance'] = mockKnex as unknown as Knex;
 
       const beforeDelete = jest.fn();
 
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
         hooks: { beforeDelete },
       });
       await repo.deleteById(1);
@@ -819,19 +777,16 @@ describe("PostgresAdapter", () => {
       expect(beforeDelete).toHaveBeenCalledWith(1);
     });
 
-    it("should call afterDelete hook with success status", async () => {
-      const mockQb = {
-        where: jest.fn().mockReturnThis(),
+    it('should call afterDelete hook with success status', async () => {
+      const { mockKnex } = createMockKnex({
         delete: jest.fn().mockResolvedValue(1),
-      };
-
-      const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter["knexInstance"] = mockKnex;
+      });
+      adapter['knexInstance'] = mockKnex as unknown as Knex;
 
       const afterDelete = jest.fn();
 
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
         hooks: { afterDelete },
       });
       await repo.deleteById(1);
@@ -839,19 +794,16 @@ describe("PostgresAdapter", () => {
       expect(afterDelete).toHaveBeenCalledWith(true);
     });
 
-    it("should call afterDelete with false when entity not found", async () => {
-      const mockQb = {
-        where: jest.fn().mockReturnThis(),
+    it('should call afterDelete with false when entity not found', async () => {
+      const { mockKnex } = createMockKnex({
         delete: jest.fn().mockResolvedValue(0),
-      };
-
-      const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter["knexInstance"] = mockKnex;
+      });
+      adapter['knexInstance'] = mockKnex as unknown as Knex;
 
       const afterDelete = jest.fn();
 
       const repo = adapter.createRepository({
-        table: "users",
+        table: 'users',
         hooks: { afterDelete },
       });
       await repo.deleteById(999);
@@ -859,7 +811,7 @@ describe("PostgresAdapter", () => {
       expect(afterDelete).toHaveBeenCalledWith(false);
     });
 
-    it("should apply filters and sort in findPage", async () => {
+    it('should apply filters and sort in findPage', async () => {
       const mockQb = {
         select: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
@@ -875,27 +827,27 @@ describe("PostgresAdapter", () => {
         offset: jest.fn().mockResolvedValue([{ id: 1 }]),
       };
       const mockCount = {
-        modify: jest.fn().mockResolvedValue([{ count: "2" }]),
+        modify: jest.fn().mockResolvedValue([{ count: '2' }]),
       };
       (mockQb as unknown as { count: jest.Mock }).count = jest
         .fn()
         .mockReturnValue(mockCount);
       const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
 
-      adapter["knexInstance"] = mockKnex;
+      adapter['knexInstance'] = mockKnex;
 
       const repo = adapter.createRepository<TestUser>({
-        table: "users",
-        columns: ["id", "name", "email", "status", "active"],
+        table: 'users',
+        columns: ['id', 'name', 'email', 'status', 'active'],
       });
 
       const result = await repo.findPage({
         filter: {
-          status: { in: ["active"] },
-          email: { like: "%@test.com" },
+          status: { in: ['active'] },
+          email: { like: '%@test.com' },
           active: { isNull: true },
         },
-        sort: "-name",
+        sort: '-name',
         page: 2,
         limit: 1,
       });
@@ -904,96 +856,84 @@ describe("PostgresAdapter", () => {
       expect(mockQb.whereIn).toHaveBeenCalled();
       expect(mockQb.whereILike).toHaveBeenCalled();
       expect(mockQb.whereNull).toHaveBeenCalled();
-      expect(mockQb.orderBy).toHaveBeenCalledWith("name", "desc");
+      expect(mockQb.orderBy).toHaveBeenCalledWith('name', 'desc');
     });
 
-    it("should upsert existing records", async () => {
-      const mockQb = {
-        select: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
+    it('should upsert existing records', async () => {
+      const { mockKnex, mockQb } = createMockKnex({
         first: jest.fn().mockResolvedValue({ id: 1 }),
-        update: jest.fn().mockReturnThis(),
-        returning: jest.fn().mockResolvedValue([{ id: 1, name: "Updated" }]),
-      };
-      const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter["knexInstance"] = mockKnex;
+        returning: jest.fn().mockResolvedValue([{ id: 1, name: 'Updated' }]),
+      });
+      adapter['knexInstance'] = mockKnex as unknown as Knex;
 
       const repo = adapter.createRepository<TestUser>({
-        table: "users",
-        columns: ["id", "name", "email", "status", "active"],
+        table: 'users',
+        columns: ['id', 'name', 'email', 'status', 'active'],
         timestamps: true,
       });
 
-      const result = await repo.upsert({ id: 1 }, { name: "Updated" });
+      const result = await repo.upsert({ id: 1 }, { name: 'Updated' });
 
-      expect(result).toEqual({ id: 1, name: "Updated" });
+      expect(result).toEqual({ id: 1, name: 'Updated' });
       expect(mockQb.update).toHaveBeenCalled();
     });
 
-    it("should upsert new records when none found", async () => {
-      const mockQb = {
-        select: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
+    it('should upsert new records when none found', async () => {
+      const { mockKnex, mockQb } = createMockKnex({
         first: jest.fn().mockResolvedValue(undefined),
-        insert: jest.fn().mockReturnThis(),
-        returning: jest.fn().mockResolvedValue([{ id: 2, name: "New" }]),
-      };
-      const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter["knexInstance"] = mockKnex;
+        returning: jest.fn().mockResolvedValue([{ id: 2, name: 'New' }]),
+      });
+      adapter['knexInstance'] = mockKnex as unknown as Knex;
 
       const repo = adapter.createRepository<TestUser>({
-        table: "users",
-        columns: ["id", "name", "email", "status", "active"],
+        table: 'users',
+        columns: ['id', 'name', 'email', 'status', 'active'],
         timestamps: true,
       });
 
-      const result = await repo.upsert({ email: "a@b.com" }, { name: "New" });
+      const result = await repo.upsert({ email: 'a@b.com' }, { name: 'New' });
 
-      expect(result).toEqual({ id: 2, name: "New" });
+      expect(result).toEqual({ id: 2, name: 'New' });
       expect(mockQb.insert).toHaveBeenCalled();
     });
 
-    it("should return distinct values", async () => {
-      const rows = [{ email: "a@b.com" }, { email: "b@b.com" }];
-      const mockQb = {
-        distinct: jest.fn().mockReturnThis(),
+    it('should return distinct values', async () => {
+      const rows = [{ email: 'a@b.com' }, { email: 'b@b.com' }];
+      const { mockKnex, mockQb } = createMockKnex({
         modify: jest.fn().mockResolvedValue(rows),
-      };
-      const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter["knexInstance"] = mockKnex;
+      });
+      adapter['knexInstance'] = mockKnex as unknown as Knex;
 
       const repo = adapter.createRepository<TestUser>({
-        table: "users",
-        columns: ["id", "name", "email", "status", "active"],
+        table: 'users',
+        columns: ['id', 'name', 'email', 'status', 'active'],
       });
 
-      const result = await repo.distinct("email");
+      const result = await repo.distinct('email');
 
-      expect(mockQb.distinct).toHaveBeenCalledWith("email");
-      expect(result).toEqual(["a@b.com", "b@b.com"]);
+      expect(mockQb.distinct).toHaveBeenCalledWith('email');
+      expect(result).toEqual(['a@b.com', 'b@b.com']);
     });
 
-    it("should select projected fields", async () => {
-      const rows = [{ name: "John" }];
-      const mockQb = {
-        select: jest.fn().mockReturnThis(),
+    it('should select projected fields', async () => {
+      const rows = [{ name: 'John' }];
+      const { mockKnex, mockQb } = createMockKnex({
         modify: jest.fn().mockResolvedValue(rows),
-      };
-      const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter["knexInstance"] = mockKnex;
+      });
+      adapter['knexInstance'] = mockKnex as unknown as Knex;
 
       const repo = adapter.createRepository<TestUser>({
-        table: "users",
-        columns: ["id", "name", "email", "status", "active"],
+        table: 'users',
+        columns: ['id', 'name', 'email', 'status', 'active'],
       });
 
-      const result = await repo.select({}, ["name"]);
+      const result = await repo.select({}, ['name']);
 
-      expect(mockQb.select).toHaveBeenCalledWith(["name"]);
-      expect(result).toEqual([{ name: "John" }]);
+      expect(mockQb.select).toHaveBeenCalledWith(['name']);
+      expect(result).toEqual([{ name: 'John' }]);
     });
 
-    it("should soft delete and restore records when enabled", async () => {
+    it('should soft delete and restore records when enabled', async () => {
       const updateMock = jest.fn().mockResolvedValueOnce(1).mockReturnThis();
       const mockQb = {
         select: jest.fn().mockReturnThis(),
@@ -1001,14 +941,14 @@ describe("PostgresAdapter", () => {
         whereNull: jest.fn().mockReturnThis(),
         whereNotNull: jest.fn().mockReturnThis(),
         update: updateMock,
-        returning: jest.fn().mockResolvedValue([{ id: 1, name: "Restored" }]),
+        returning: jest.fn().mockResolvedValue([{ id: 1, name: 'Restored' }]),
       };
       const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter["knexInstance"] = mockKnex;
+      adapter['knexInstance'] = mockKnex;
 
       const repo = adapter.createRepository<TestUser & { deleted_at?: Date }>({
-        table: "users",
-        columns: ["id", "name", "email", "status", "active", "deleted_at"],
+        table: 'users',
+        columns: ['id', 'name', 'email', 'status', 'active', 'deleted_at'],
         softDelete: true,
       });
 
@@ -1016,23 +956,23 @@ describe("PostgresAdapter", () => {
       const restored = await repo.restore?.(1);
 
       expect(deleted).toBe(true);
-      expect(restored).toEqual({ id: 1, name: "Restored" });
+      expect(restored).toEqual({ id: 1, name: 'Restored' });
       expect(mockQb.update).toHaveBeenCalled();
     });
   });
 
-  describe("healthCheck", () => {
-    it("should return unhealthy when not connected", async () => {
+  describe('healthCheck', () => {
+    it('should return unhealthy when not connected', async () => {
       const result = await adapter.healthCheck();
 
       expect(result.healthy).toBe(false);
-      expect(result.error).toBe("Not connected to PostgreSQL");
-      expect(result.type).toBe("postgres");
+      expect(result.error).toBe('Not connected to PostgreSQL');
+      expect(result.type).toBe('postgres');
     });
 
-    it("should return healthy when connected", async () => {
+    it('should return healthy when connected', async () => {
       const mockRaw = jest.fn().mockResolvedValue({
-        rows: [{ version: "PostgreSQL 14.0", current_database: "testdb" }],
+        rows: [{ version: 'PostgreSQL 14.0', current_database: 'testdb' }],
       });
       const mockKnex = {
         raw: mockRaw,
@@ -1044,58 +984,58 @@ describe("PostgresAdapter", () => {
         },
       } as unknown as Knex;
 
-      adapter["knexInstance"] = mockKnex;
+      adapter['knexInstance'] = mockKnex;
 
       const result = await adapter.healthCheck();
 
       expect(result.healthy).toBe(true);
-      expect(result.type).toBe("postgres");
+      expect(result.type).toBe('postgres');
       expect(result.details?.activeConnections).toBe(2);
       expect(result.details?.poolSize).toBe(10);
     });
 
-    it("should handle error during health check", async () => {
+    it('should handle error during health check', async () => {
       const mockRaw = jest
         .fn()
-        .mockRejectedValue(new Error("Connection failed"));
+        .mockRejectedValue(new Error('Connection failed'));
       const mockKnex = {
         raw: mockRaw,
       } as unknown as Knex;
 
-      adapter["knexInstance"] = mockKnex;
+      adapter['knexInstance'] = mockKnex;
 
       const result = await adapter.healthCheck();
 
       expect(result.healthy).toBe(false);
-      expect(result.error).toBe("Connection failed");
+      expect(result.error).toBe('Connection failed');
     });
   });
 
-  describe("withTransaction", () => {
-    it("should execute callback within transaction successfully", async () => {
+  describe('withTransaction', () => {
+    it('should execute callback within transaction successfully', async () => {
       adapter.connect();
 
       const callback = jest.fn(async (ctx: PostgresTransactionContext) => {
         expect(ctx.transaction).toBeDefined();
         expect(ctx.createRepository).toBeDefined();
-        return { result: "success" };
+        return { result: 'success' };
       });
 
       const result = await adapter.withTransaction(callback);
 
-      expect(result).toEqual({ result: "success" });
+      expect(result).toEqual({ result: 'success' });
       expect(callback).toHaveBeenCalled();
       expect(mockTrx.raw).toHaveBeenCalledWith(
-        expect.stringContaining("statement_timeout"),
+        expect.stringContaining('statement_timeout'),
       );
     });
 
-    it("should retry on serialization failure", async () => {
+    it('should retry on serialization failure', async () => {
       adapter.connect();
 
       const serializationError = {
-        code: "40001",
-        message: "Serialization failure",
+        code: '40001',
+        message: 'Serialization failure',
       };
 
       let attempt = 0;
@@ -1115,20 +1055,20 @@ describe("PostgresAdapter", () => {
       (mockKnexInstance as unknown as { transaction: jest.Mock }).transaction =
         mockTransaction;
 
-      const callback = jest.fn(async () => ({ result: "success after retry" }));
+      const callback = jest.fn(async () => ({ result: 'success after retry' }));
 
       const result = await adapter.withTransaction(callback, { retries: 1 });
 
-      expect(result).toEqual({ result: "success after retry" });
+      expect(result).toEqual({ result: 'success after retry' });
       expect(mockTransaction).toHaveBeenCalledTimes(2);
     });
 
-    it("should retry on deadlock", async () => {
+    it('should retry on deadlock', async () => {
       adapter.connect();
 
       const deadlockError = {
-        code: "40P01",
-        message: "Deadlock detected",
+        code: '40P01',
+        message: 'Deadlock detected',
       };
 
       let attempt = 0;
@@ -1148,19 +1088,19 @@ describe("PostgresAdapter", () => {
       (mockKnexInstance as unknown as { transaction: jest.Mock }).transaction =
         mockTransaction;
 
-      const callback = jest.fn(async () => ({ result: "success after retry" }));
+      const callback = jest.fn(async () => ({ result: 'success after retry' }));
 
       const result = await adapter.withTransaction(callback, { retries: 1 });
 
-      expect(result).toEqual({ result: "success after retry" });
+      expect(result).toEqual({ result: 'success after retry' });
     });
 
-    it("should throw after exhausting retries", async () => {
+    it('should throw after exhausting retries', async () => {
       adapter.connect();
 
       const persistentError = {
-        code: "40001",
-        message: "Persistent serialization failure",
+        code: '40001',
+        message: 'Persistent serialization failure',
       };
 
       const mockTransaction = jest.fn(async () => {
@@ -1170,7 +1110,7 @@ describe("PostgresAdapter", () => {
       (mockKnexInstance as unknown as { transaction: jest.Mock }).transaction =
         mockTransaction;
 
-      const callback = jest.fn(async () => ({ result: "should not reach" }));
+      const callback = jest.fn(async () => ({ result: 'should not reach' }));
 
       await expect(
         adapter.withTransaction(callback, { retries: 2 }),
@@ -1179,10 +1119,10 @@ describe("PostgresAdapter", () => {
       expect(mockTransaction).toHaveBeenCalledTimes(3); // initial + 2 retries
     });
 
-    it("should handle all retryable error codes", async () => {
+    it('should handle all retryable error codes', async () => {
       adapter.connect();
 
-      const retryableCodes = ["40001", "40P01", "55P03", "57P01", "57014"];
+      const retryableCodes = ['40001', '40P01', '55P03', '57P01', '57014'];
 
       for (const code of retryableCodes) {
         jest.clearAllMocks();
@@ -1195,7 +1135,11 @@ describe("PostgresAdapter", () => {
           ) => {
             attempt++;
             if (attempt === 1) {
-              throw { code, message: `Error code ${code}` };
+              const error = new Error(`Error code ${code}`) as Error & {
+                code: string;
+              };
+              error.code = code;
+              throw error;
             }
             return callback(mockTrx);
           },
@@ -1212,7 +1156,7 @@ describe("PostgresAdapter", () => {
       }
     });
 
-    it("should use specified isolation level", async () => {
+    it('should use specified isolation level', async () => {
       adapter.connect();
 
       const mockTransaction = jest.fn(
@@ -1220,7 +1164,7 @@ describe("PostgresAdapter", () => {
           callback: (trx: typeof mockTrx) => Promise<unknown>,
           options?: { isolationLevel?: string },
         ) => {
-          expect(options?.isolationLevel).toBe("serializable");
+          expect(options?.isolationLevel).toBe('serializable');
           return callback(mockTrx);
         },
       );
@@ -1228,18 +1172,18 @@ describe("PostgresAdapter", () => {
       (mockKnexInstance as unknown as { transaction: jest.Mock }).transaction =
         mockTransaction;
 
-      const callback = jest.fn(async () => ({ result: "success" }));
+      const callback = jest.fn(async () => ({ result: 'success' }));
 
       await adapter.withTransaction(callback, {
-        isolationLevel: "serializable",
+        isolationLevel: 'serializable',
       });
 
       expect(mockTransaction).toHaveBeenCalled();
     });
   });
 
-  describe("complex filter operations", () => {
-    it("should apply all filter operators", async () => {
+  describe('complex filter operations', () => {
+    it('should apply all filter operators', async () => {
       const mockQb = {
         select: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
@@ -1252,47 +1196,47 @@ describe("PostgresAdapter", () => {
         first: jest.fn().mockResolvedValue({ id: 1 }),
       };
       const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter["knexInstance"] = mockKnex;
+      adapter['knexInstance'] = mockKnex;
 
       const repo = adapter.createRepository<TestUser>({
-        table: "users",
-        columns: ["id", "name", "email", "status", "active"],
+        table: 'users',
+        columns: ['id', 'name', 'email', 'status', 'active'],
       });
 
       await repo.findOne({
         id: { gt: 10, lt: 100 },
-        status: { ne: "deleted" },
-        name: { like: "John%" },
-        email: { in: ["a@b.com", "c@d.com"] },
+        status: { ne: 'deleted' },
+        name: { like: 'John%' },
+        email: { in: ['a@b.com', 'c@d.com'] },
       });
 
-      expect(mockQb.where).toHaveBeenCalledWith("id", ">", 10);
-      expect(mockQb.where).toHaveBeenCalledWith("id", "<", 100);
-      expect(mockQb.whereNot).toHaveBeenCalledWith("status", "deleted");
-      expect(mockQb.whereILike).toHaveBeenCalledWith("name", "John%");
-      expect(mockQb.whereIn).toHaveBeenCalledWith("email", [
-        "a@b.com",
-        "c@d.com",
+      expect(mockQb.where).toHaveBeenCalledWith('id', '>', 10);
+      expect(mockQb.where).toHaveBeenCalledWith('id', '<', 100);
+      expect(mockQb.whereNot).toHaveBeenCalledWith('status', 'deleted');
+      expect(mockQb.whereILike).toHaveBeenCalledWith('name', 'John%');
+      expect(mockQb.whereIn).toHaveBeenCalledWith('email', [
+        'a@b.com',
+        'c@d.com',
       ]);
     });
 
-    it("should reject non-allowed fields", async () => {
+    it('should reject non-allowed fields', async () => {
       const mockKnex = jest.fn(() => ({
         select: jest.fn().mockReturnThis(),
       })) as unknown as Knex;
-      adapter["knexInstance"] = mockKnex;
+      adapter['knexInstance'] = mockKnex;
 
       const repo = adapter.createRepository<TestUser>({
-        table: "users",
-        columns: ["id", "name"],
+        table: 'users',
+        columns: ['id', 'name'],
       });
 
-      await expect(repo.findOne({ email: "test@test.com" })).rejects.toThrow(
+      await expect(repo.findOne({ email: 'test@test.com' })).rejects.toThrow(
         'Field "email" is not allowed',
       );
     });
 
-    it("should support string sort format", async () => {
+    it('should support string sort format', async () => {
       const mockQb = {
         select: jest.fn().mockReturnThis(),
         count: jest.fn().mockReturnThis(),
@@ -1304,26 +1248,26 @@ describe("PostgresAdapter", () => {
       };
       const countQb = {
         count: jest.fn().mockReturnThis(),
-        modify: jest.fn().mockResolvedValue([{ count: "10" }]),
+        modify: jest.fn().mockResolvedValue([{ count: '10' }]),
       };
       const mockKnex = jest.fn((tableName: string) =>
-        tableName === "users" ? mockQb : countQb,
+        tableName === 'users' ? mockQb : countQb,
       ) as unknown as Knex;
 
-      adapter["knexInstance"] = mockKnex;
+      adapter['knexInstance'] = mockKnex;
 
       const repo = adapter.createRepository<TestUser>({
-        table: "users",
-        columns: ["id", "name", "email"],
+        table: 'users',
+        columns: ['id', 'name', 'email'],
       });
 
-      await repo.findPage({ sort: "-name,+email" });
+      await repo.findPage({ sort: '-name,+email' });
 
-      expect(mockQb.orderBy).toHaveBeenCalledWith("name", "desc");
-      expect(mockQb.orderBy).toHaveBeenCalledWith("email", "asc");
+      expect(mockQb.orderBy).toHaveBeenCalledWith('name', 'desc');
+      expect(mockQb.orderBy).toHaveBeenCalledWith('email', 'asc');
     });
 
-    it("should support object sort format", async () => {
+    it('should support object sort format', async () => {
       const mockQb = {
         select: jest.fn().mockReturnThis(),
         count: jest.fn().mockReturnThis(),
@@ -1335,28 +1279,28 @@ describe("PostgresAdapter", () => {
       };
       const countQb = {
         count: jest.fn().mockReturnThis(),
-        modify: jest.fn().mockResolvedValue([{ count: "10" }]),
+        modify: jest.fn().mockResolvedValue([{ count: '10' }]),
       };
       const mockKnex = jest.fn((tableName: string) =>
-        tableName === "users" ? mockQb : countQb,
+        tableName === 'users' ? mockQb : countQb,
       ) as unknown as Knex;
 
-      adapter["knexInstance"] = mockKnex;
+      adapter['knexInstance'] = mockKnex;
 
       const repo = adapter.createRepository<TestUser>({
-        table: "users",
-        columns: ["id", "name", "email"],
+        table: 'users',
+        columns: ['id', 'name', 'email'],
       });
 
-      await repo.findPage({ sort: { name: -1, email: "asc" } });
+      await repo.findPage({ sort: { name: -1, email: 'asc' } });
 
-      expect(mockQb.orderBy).toHaveBeenCalledWith("name", "desc");
-      expect(mockQb.orderBy).toHaveBeenCalledWith("email", "asc");
+      expect(mockQb.orderBy).toHaveBeenCalledWith('name', 'desc');
+      expect(mockQb.orderBy).toHaveBeenCalledWith('email', 'asc');
     });
   });
 
-  describe("hook execution", () => {
-    it("should execute beforeCreate and afterCreate hooks", async () => {
+  describe('hook execution', () => {
+    it('should execute beforeCreate and afterCreate hooks', async () => {
       const beforeCreate = jest.fn(async ({ data }) => ({
         ...data,
         modified: true,
@@ -1367,23 +1311,23 @@ describe("PostgresAdapter", () => {
         insert: jest.fn().mockReturnThis(),
         returning: jest
           .fn()
-          .mockResolvedValue([{ id: 1, name: "test", modified: true }]),
+          .mockResolvedValue([{ id: 1, name: 'test', modified: true }]),
       };
       const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter["knexInstance"] = mockKnex;
+      adapter['knexInstance'] = mockKnex;
 
       const repo = adapter.createRepository<TestUser>({
-        table: "users",
+        table: 'users',
         hooks: { beforeCreate, afterCreate },
       });
 
-      const result = await repo.create({ name: "test" } as Partial<TestUser>);
+      const result = await repo.create({ name: 'test' } as Partial<TestUser>);
 
       expect(beforeCreate).toHaveBeenCalled();
       expect(afterCreate).toHaveBeenCalledWith(result);
     });
 
-    it("should execute beforeUpdate and afterUpdate hooks", async () => {
+    it('should execute beforeUpdate and afterUpdate hooks', async () => {
       const beforeUpdate = jest.fn(async ({ data }) => ({
         ...data,
         updated: true,
@@ -1397,22 +1341,22 @@ describe("PostgresAdapter", () => {
         returning: jest.fn().mockResolvedValue([{ id: 1, updated: true }]),
       };
       const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter["knexInstance"] = mockKnex;
+      adapter['knexInstance'] = mockKnex;
 
       const repo = adapter.createRepository<TestUser>({
-        table: "users",
+        table: 'users',
         hooks: { beforeUpdate, afterUpdate },
       });
 
       const result = await repo.updateById(1, {
-        name: "updated",
+        name: 'updated',
       } as Partial<TestUser>);
 
       expect(beforeUpdate).toHaveBeenCalled();
       expect(afterUpdate).toHaveBeenCalledWith(result);
     });
 
-    it("should execute beforeDelete and afterDelete hooks", async () => {
+    it('should execute beforeDelete and afterDelete hooks', async () => {
       const beforeDelete = jest.fn();
       const afterDelete = jest.fn();
 
@@ -1422,10 +1366,10 @@ describe("PostgresAdapter", () => {
         delete: jest.fn().mockResolvedValue(1),
       };
       const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter["knexInstance"] = mockKnex;
+      adapter['knexInstance'] = mockKnex;
 
       const repo = adapter.createRepository<TestUser>({
-        table: "users",
+        table: 'users',
         hooks: { beforeDelete, afterDelete },
       });
 
@@ -1436,9 +1380,9 @@ describe("PostgresAdapter", () => {
     });
   });
 
-  describe("connection configuration", () => {
-    it("should apply custom pool configuration", () => {
-      const knexMock = require("knex");
+  describe('connection configuration', () => {
+    it('should apply custom pool configuration', () => {
+      const knexMock = require('knex');
       const customAdapter = new PostgresAdapter({
         ...mockConfig,
         pool: {
@@ -1464,8 +1408,8 @@ describe("PostgresAdapter", () => {
       );
     });
 
-    it("should apply custom connection overrides", () => {
-      const knexMock = require("knex");
+    it('should apply custom connection overrides', () => {
+      const knexMock = require('knex');
       adapter.connect({ debug: true });
 
       expect(knexMock).toHaveBeenCalledWith(
@@ -1474,14 +1418,14 @@ describe("PostgresAdapter", () => {
     });
   });
 
-  describe("getKnex", () => {
-    it("should throw error when not connected", () => {
+  describe('getKnex', () => {
+    it('should throw error when not connected', () => {
       expect(() => adapter.getKnex()).toThrow(
-        "PostgreSQL not connected. Call connect() first.",
+        'PostgreSQL not connected. Call connect() first.',
       );
     });
 
-    it("should return knex instance when connected", () => {
+    it('should return knex instance when connected', () => {
       adapter.connect();
       const knex = adapter.getKnex();
       expect(knex).toBeDefined();

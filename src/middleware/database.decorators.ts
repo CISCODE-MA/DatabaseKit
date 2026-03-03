@@ -1,8 +1,8 @@
 // src/middleware/database.decorators.ts
 
-import { Inject } from "@nestjs/common";
+import { Inject } from '@nestjs/common';
 
-import { DATABASE_TOKEN } from "../config/database.constants";
+import { DATABASE_TOKEN } from '../config/database.constants';
 
 /**
  * Decorator to inject the DatabaseService instance.

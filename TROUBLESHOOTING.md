@@ -177,7 +177,7 @@ Error: Environment variable DATABASE_URL is not configured.
 
    ```typescript
    // In main.ts (before NestJS bootstrap)
-   import * as dotenv from "dotenv";
+   import * as dotenv from 'dotenv';
    dotenv.config();
    ```
 
@@ -231,8 +231,8 @@ Add the column to your repository config:
 
 ```typescript
 const repo = db.createPostgresRepository({
-  table: "users",
-  columns: ["id", "name", "email", "secret_column"], // Add here
+  table: 'users',
+  columns: ['id', 'name', 'email', 'secret_column'], // Add here
 });
 ```
 
@@ -248,10 +248,10 @@ CastError: Cast to ObjectId failed for value "invalid-id"
 Validate IDs before querying:
 
 ```typescript
-import { isValidMongoId } from "@ciscode/database-kit";
+import { isValidMongoId } from '@ciscode/database-kit';
 
 if (!isValidMongoId(id)) {
-  throw new BadRequestException("Invalid ID format");
+  throw new BadRequestException('Invalid ID format');
 }
 
 const user = await repo.findById(id);
@@ -272,7 +272,7 @@ MongoServerError: E11000 duplicate key error
    ```typescript
    const exists = await repo.exists({ email });
    if (exists) {
-     throw new ConflictException("Email already exists");
+     throw new ConflictException('Email already exists');
    }
    ```
 
@@ -483,10 +483,10 @@ When creating an issue, include:
 Enable debug logging to diagnose issues:
 
 ```typescript
-import { Logger } from "@nestjs/common";
+import { Logger } from '@nestjs/common';
 
 // Enable all log levels
-Logger.overrideLogger(["log", "error", "warn", "debug", "verbose"]);
+Logger.overrideLogger(['log', 'error', 'warn', 'debug', 'verbose']);
 ```
 
 Or set environment variable:
