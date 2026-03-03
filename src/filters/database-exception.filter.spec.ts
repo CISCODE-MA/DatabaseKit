@@ -4,7 +4,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 
-import { createMockHost } from '../test/test.utils';
+import { createMockHost, testExceptionMapping } from '../test/test.utils';
 
 import { DatabaseExceptionFilter } from './database-exception.filter';
 
@@ -32,85 +32,47 @@ describe('DatabaseExceptionFilter', () => {
   });
 
   it('should handle MongoDB duplicate key error', () => {
-    const { host, response } = createMockHost();
-    const exception = {
-      name: 'MongoServerError',
-      code: 11000,
-      message: 'duplicate key',
-    };
-
-    filter.catch(exception, host);
-
-    expect(response.status).toHaveBeenCalledWith(HttpStatus.CONFLICT);
-    expect(response.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        statusCode: HttpStatus.CONFLICT,
-        error: 'DuplicateKeyError',
-      }),
+    testExceptionMapping(
+      filter,
+      { name: 'MongoServerError', code: 11000, message: 'duplicate key' },
+      HttpStatus.CONFLICT,
+      'DuplicateKeyError',
     );
   });
 
   it('should handle MongoDB cast error', () => {
-    const { host, response } = createMockHost();
-    const exception = { name: 'CastError', message: 'invalid id' };
-
-    filter.catch(exception, host);
-
-    expect(response.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
-    expect(response.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        statusCode: HttpStatus.BAD_REQUEST,
-        error: 'CastError',
-      }),
+    testExceptionMapping(
+      filter,
+      { name: 'CastError', message: 'invalid id' },
+      HttpStatus.BAD_REQUEST,
+      'CastError',
     );
   });
 
   it('should handle MongoDB validation error', () => {
-    const { host, response } = createMockHost();
-    const exception = { name: 'ValidationError', message: 'invalid' };
-
-    filter.catch(exception, host);
-
-    expect(response.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
-    expect(response.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        statusCode: HttpStatus.BAD_REQUEST,
-        error: 'ValidationError',
-      }),
+    testExceptionMapping(
+      filter,
+      { name: 'ValidationError', message: 'invalid' },
+      HttpStatus.BAD_REQUEST,
+      'ValidationError',
     );
   });
 
   it('should handle postgres unique constraint', () => {
-    const { host, response } = createMockHost();
-    const exception = {
-      code: '23505',
-      message: 'unique',
-      constraint: 'users_email_key',
-    };
-
-    filter.catch(exception, host);
-
-    expect(response.status).toHaveBeenCalledWith(HttpStatus.CONFLICT);
-    expect(response.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        statusCode: HttpStatus.CONFLICT,
-        error: 'UniqueConstraintViolation',
-      }),
+    testExceptionMapping(
+      filter,
+      { code: '23505', message: 'unique', constraint: 'users_email_key' },
+      HttpStatus.CONFLICT,
+      'UniqueConstraintViolation',
     );
   });
 
   it('should handle postgres foreign key error', () => {
-    const { host, response } = createMockHost();
-    const exception = { code: '23503', message: 'fk' };
-
-    filter.catch(exception, host);
-
-    expect(response.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
-    expect(response.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        statusCode: HttpStatus.BAD_REQUEST,
-        error: 'ForeignKeyViolation',
-      }),
+    testExceptionMapping(
+      filter,
+      { code: '23503', message: 'fk' },
+      HttpStatus.BAD_REQUEST,
+      'ForeignKeyViolation',
     );
   });
 

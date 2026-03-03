@@ -8,7 +8,10 @@ import type {
   MongoDatabaseConfig,
   PostgresDatabaseConfig,
 } from '../contracts/database.contracts';
-import { createMockAdapter } from '../test/test.utils';
+import {
+  createMockAdapter,
+  testDatabaseServiceBasics,
+} from '../test/test.utils';
 
 import { DatabaseService } from './database.service';
 
@@ -45,77 +48,9 @@ describe('DatabaseService', () => {
       jest.clearAllMocks();
     });
 
-    it('should be defined', () => {
-      expect(service).toBeDefined();
-    });
-
-    it('should return correct database type', () => {
-      expect(service.type).toBe('mongo');
-    });
-
-    it('should not be connected initially', () => {
-      expect(service.isConnected()).toBe(false);
-    });
-
-    it('should throw when creating postgres repository with mongo config', () => {
-      expect(() =>
-        service.createPostgresRepository({
-          table: 'users',
-        }),
-      ).toThrow('Database type is "mongo"');
-    });
-
-    it('should throw when using withPostgresTransaction with mongo config', async () => {
-      await expect(
-        service.withPostgresTransaction(async () => {
-          return 'test';
-        }),
-      ).rejects.toThrow('Database type is "mongo"');
-    });
-
-    it('should have withMongoTransaction method', () => {
-      expect(typeof service.withMongoTransaction).toBe('function');
-    });
-
-    it('should have withTransaction method', () => {
-      expect(typeof service.withTransaction).toBe('function');
-    });
-
-    it('should connect and initialize mongo adapter', async () => {
-      await service.connect();
-
-      expect(MongoAdapter).toHaveBeenCalledTimes(1);
-      const adapterInstance = (MongoAdapter as jest.Mock).mock.results[0]
-        ?.value as { connect: jest.Mock };
-      expect(adapterInstance.connect).toHaveBeenCalled();
-      expect(service.isConnected()).toBe(true);
-    });
-
-    it('should create mongo repository through adapter', () => {
-      const repo = service.createMongoRepository({ model: {} });
-
-      expect(repo).toBeDefined();
-      const adapterInstance = (MongoAdapter as jest.Mock).mock.results[0]
-        ?.value as { createRepository: jest.Mock };
-      expect(adapterInstance.createRepository).toHaveBeenCalledWith({
-        model: {},
-      });
-    });
-
-    it('should run mongo transaction via adapter', async () => {
-      const result = await service.withMongoTransaction(async () => 'ok');
-
-      expect(result).toBe('ok');
-      const adapterInstance = (MongoAdapter as jest.Mock).mock.results[0]
-        ?.value as { withTransaction: jest.Mock };
-      expect(adapterInstance.withTransaction).toHaveBeenCalled();
-    });
-
-    it('should return health check from mongo adapter', async () => {
-      const result = await service.healthCheck();
-
-      expect(result.healthy).toBe(true);
-      expect(result.type).toBe('mongo');
+    testDatabaseServiceBasics('mongo', () => service, MongoAdapter, {
+      repo: 'postgres',
+      transaction: 'withPostgresTransaction',
     });
   });
 
@@ -135,77 +70,13 @@ describe('DatabaseService', () => {
       jest.clearAllMocks();
     });
 
-    it('should be defined', () => {
-      expect(service).toBeDefined();
-    });
-
-    it('should return correct database type', () => {
-      expect(service.type).toBe('postgres');
-    });
-
-    it('should throw when creating mongo repository with postgres config', () => {
-      expect(() =>
-        service.createMongoRepository({
-          model: {},
-        }),
-      ).toThrow('Database type is "postgres"');
-    });
-
-    it('should throw when using withMongoTransaction with postgres config', async () => {
-      await expect(
-        service.withMongoTransaction(async () => {
-          return 'test';
-        }),
-      ).rejects.toThrow('Database type is "postgres"');
-    });
-
-    it('should have withPostgresTransaction method', () => {
-      expect(typeof service.withPostgresTransaction).toBe('function');
-    });
-
-    it('should have withTransaction method', () => {
-      expect(typeof service.withTransaction).toBe('function');
+    testDatabaseServiceBasics('postgres', () => service, PostgresAdapter, {
+      repo: 'mongo',
+      transaction: 'withMongoTransaction',
     });
 
     it('should have healthCheck method', () => {
       expect(typeof service.healthCheck).toBe('function');
-    });
-
-    it('should connect and initialize postgres adapter', async () => {
-      await service.connect();
-
-      expect(PostgresAdapter).toHaveBeenCalledTimes(1);
-      const adapterInstance = (PostgresAdapter as jest.Mock).mock.results[0]
-        ?.value as { connect: jest.Mock };
-      expect(adapterInstance.connect).toHaveBeenCalled();
-      expect(service.isConnected()).toBe(true);
-    });
-
-    it('should create postgres repository through adapter', () => {
-      const repo = service.createPostgresRepository({ table: 'users' });
-
-      expect(repo).toBeDefined();
-      const adapterInstance = (PostgresAdapter as jest.Mock).mock.results[0]
-        ?.value as { createRepository: jest.Mock };
-      expect(adapterInstance.createRepository).toHaveBeenCalledWith({
-        table: 'users',
-      });
-    });
-
-    it('should run postgres transaction via adapter', async () => {
-      const result = await service.withPostgresTransaction(async () => 'ok');
-
-      expect(result).toBe('ok');
-      const adapterInstance = (PostgresAdapter as jest.Mock).mock.results[0]
-        ?.value as { withTransaction: jest.Mock };
-      expect(adapterInstance.withTransaction).toHaveBeenCalled();
-    });
-
-    it('should return health check from postgres adapter', async () => {
-      const result = await service.healthCheck();
-
-      expect(result.healthy).toBe(true);
-      expect(result.type).toBe('postgres');
     });
   });
 

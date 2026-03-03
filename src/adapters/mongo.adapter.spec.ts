@@ -2,7 +2,12 @@ import type {
   MongoDatabaseConfig,
   MongoTransactionContext,
 } from '../contracts/database.contracts';
-import { createMockMongoModel, createMockMongoDocs } from '../test/test.utils';
+import {
+  createMockMongoModel,
+  createMockMongoDocs,
+  testSoftDeleteMethods,
+  testRepositoryMethods,
+} from '../test/test.utils';
 
 import { MongoAdapter } from './mongo.adapter';
 
@@ -94,19 +99,7 @@ describe('MongoAdapter', () => {
 
       const repo = adapter.createRepository({ model: mockModel });
 
-      expect(repo).toBeDefined();
-      expect(typeof repo.create).toBe('function');
-      expect(typeof repo.findById).toBe('function');
-      expect(typeof repo.findAll).toBe('function');
-      expect(typeof repo.findPage).toBe('function');
-      expect(typeof repo.updateById).toBe('function');
-      expect(typeof repo.deleteById).toBe('function');
-      expect(typeof repo.count).toBe('function');
-      expect(typeof repo.exists).toBe('function');
-      // Bulk operations
-      expect(typeof repo.insertMany).toBe('function');
-      expect(typeof repo.updateMany).toBe('function');
-      expect(typeof repo.deleteMany).toBe('function');
+      testRepositoryMethods(repo);
     });
 
     it('should insertMany documents', async () => {
@@ -290,12 +283,7 @@ describe('MongoAdapter', () => {
         softDelete: false,
       });
 
-      expect(repo.softDelete).toBeUndefined();
-      expect(repo.softDeleteMany).toBeUndefined();
-      expect(repo.restore).toBeUndefined();
-      expect(repo.restoreMany).toBeUndefined();
-      expect(repo.findAllWithDeleted).toBeUndefined();
-      expect(repo.findDeleted).toBeUndefined();
+      testSoftDeleteMethods(repo, false);
     });
 
     it('should have soft delete methods when softDelete is enabled', () => {
@@ -310,12 +298,7 @@ describe('MongoAdapter', () => {
         softDelete: true,
       });
 
-      expect(typeof repo.softDelete).toBe('function');
-      expect(typeof repo.softDeleteMany).toBe('function');
-      expect(typeof repo.restore).toBe('function');
-      expect(typeof repo.restoreMany).toBe('function');
-      expect(typeof repo.findAllWithDeleted).toBe('function');
-      expect(typeof repo.findDeleted).toBe('function');
+      testSoftDeleteMethods(repo, true);
     });
 
     it('should soft delete a record by setting deletedAt', async () => {

@@ -345,3 +345,187 @@ export const assertions = {
     );
   },
 };
+
+/**
+ * Test exception filter mappings.
+ * Reduces duplication in database-exception.filter.spec.ts.
+ */
+export function testExceptionMapping(
+  filter: any,
+  exception: any,
+  expectedStatus: number,
+  expectedError: string,
+) {
+  const { host, response } = createMockHost();
+  filter.catch(exception, host);
+  expect(response.status).toHaveBeenCalledWith(expectedStatus);
+  expect(response.json).toHaveBeenCalledWith(
+    expect.objectContaining({
+      statusCode: expectedStatus,
+      error: expectedError,
+    }),
+  );
+}
+
+/**
+ * Shared test suite for DatabaseService basic functionality.
+ * Tests common behaviors across both MongoDB and PostgreSQL adapters.
+ * Call this from within a describe block where 'service' is in scope.
+ */
+export function testDatabaseServiceBasics(
+  type: 'mongo' | 'postgres',
+  getService: () => any,
+  AdapterClass: any,
+  oppositeMethods: { repo: string; transaction: string },
+) {
+  it('should be defined', () => {
+    expect(getService()).toBeDefined();
+  });
+
+  it('should return correct database type', () => {
+    expect(getService().type).toBe(type);
+  });
+
+  it('should not be connected initially', () => {
+    expect(getService().isConnected()).toBe(false);
+  });
+
+  it(`should throw when creating ${oppositeMethods.repo} repository with ${type} config`, () => {
+    const methodName =
+      type === 'mongo' ? 'createPostgresRepository' : 'createMongoRepository';
+    const arg = type === 'mongo' ? { table: 'users' } : { model: {} };
+
+    expect(() => getService()[methodName](arg)).toThrow(
+      `Database type is "${type}"`,
+    );
+  });
+
+  it(`should throw when using ${oppositeMethods.transaction} with ${type} config`, async () => {
+    const methodName =
+      type === 'mongo' ? 'withPostgresTransaction' : 'withMongoTransaction';
+
+    await expect(getService()[methodName](async () => 'test')).rejects.toThrow(
+      `Database type is "${type}"`,
+    );
+  });
+
+  it(`should have ${type === 'mongo' ? 'withMongoTransaction' : 'withPostgresTransaction'} method`, () => {
+    const methodName =
+      type === 'mongo' ? 'withMongoTransaction' : 'withPostgresTransaction';
+    expect(typeof getService()[methodName]).toBe('function');
+  });
+
+  it('should have withTransaction method', () => {
+    expect(typeof getService().withTransaction).toBe('function');
+  });
+
+  it(`should connect and initialize ${type} adapter`, async () => {
+    await getService().connect();
+
+    expect(AdapterClass).toHaveBeenCalledTimes(1);
+    const adapterInstance = (AdapterClass as jest.Mock).mock.results[0]
+      ?.value as { connect: jest.Mock };
+    expect(adapterInstance.connect).toHaveBeenCalled();
+    expect(getService().isConnected()).toBe(true);
+  });
+
+  it(`should create ${type} repository through adapter`, () => {
+    const methodName =
+      type === 'mongo' ? 'createMongoRepository' : 'createPostgresRepository';
+    const arg = type === 'mongo' ? { model: {} } : { table: 'users' };
+
+    const repo = getService()[methodName](arg);
+
+    expect(repo).toBeDefined();
+    const adapterInstance = (AdapterClass as jest.Mock).mock.results[0]
+      ?.value as { createRepository: jest.Mock };
+    expect(adapterInstance.createRepository).toHaveBeenCalledWith(arg);
+  });
+
+  it(`should run ${type} transaction via adapter`, async () => {
+    const methodName =
+      type === 'mongo' ? 'withMongoTransaction' : 'withPostgresTransaction';
+
+    const result = await getService()[methodName](async () => 'ok');
+
+    expect(result).toBe('ok');
+    const adapterInstance = (AdapterClass as jest.Mock).mock.results[0]
+      ?.value as { withTransaction: jest.Mock };
+    expect(adapterInstance.withTransaction).toHaveBeenCalled();
+  });
+
+  it(`should return health check from ${type} adapter`, async () => {
+    const result = await getService().healthCheck();
+
+    expect(result.healthy).toBe(true);
+    expect(result.type).toBe(type);
+  });
+}
+
+/**
+ * Test soft delete method availability given configuration.
+ */
+export function testSoftDeleteMethods(repo: any, shouldExist: boolean) {
+  const methods = [
+    'softDelete',
+    'softDeleteMany',
+    'restore',
+    'restoreMany',
+    'findAllWithDeleted',
+    'findDeleted',
+  ];
+
+  methods.forEach((method) => {
+    if (shouldExist) {
+      expect(typeof repo[method]).toBe('function');
+    } else {
+      expect(repo[method]).toBeUndefined();
+    }
+  });
+}
+
+/**
+ * Assert timestamp field was added to the method call.
+ */
+export function expectTimestampAdded(
+  mockMethod: jest.Mock,
+  field: 'createdAt' | 'updatedAt',
+) {
+  expect(mockMethod).toHaveBeenCalledWith(
+    expect.objectContaining({
+      [field]: expect.any(Date),
+    }),
+  );
+}
+
+/**
+ * Assert timestamp field was NOT added to the method call.
+ */
+export function expectTimestampOmitted(
+  mockMethod: jest.Mock,
+  field: 'createdAt' | 'updatedAt',
+) {
+  const calls = mockMethod.mock.calls;
+  calls.forEach((call) => {
+    expect(call[0]).not.toHaveProperty(field);
+  });
+}
+
+/**
+ * Test that a repository has all expected CRUD and bulk operation methods.
+ */
+export function testRepositoryMethods(repo: any) {
+  expect(repo).toBeDefined();
+  expect(typeof repo.create).toBe('function');
+  expect(typeof repo.findById).toBe('function');
+  expect(typeof repo.findAll).toBe('function');
+  expect(typeof repo.findPage).toBe('function');
+  expect(typeof repo.updateById).toBe('function');
+  expect(typeof repo.deleteById).toBe('function');
+  expect(typeof repo.count).toBe('function');
+  expect(typeof repo.exists).toBe('function');
+  // Bulk operations
+  expect(typeof repo.insertMany).toBe('function');
+  expect(typeof repo.updateMany).toBe('function');
+  expect(typeof repo.deleteMany).toBe('function');
+}
