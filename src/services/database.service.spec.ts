@@ -8,38 +8,23 @@ import type {
   MongoDatabaseConfig,
   PostgresDatabaseConfig,
 } from '../contracts/database.contracts';
+import { createMockAdapter } from '../test/test.utils';
 
 import { DatabaseService } from './database.service';
 
 jest.mock('../adapters/mongo.adapter', () => {
   return {
-    MongoAdapter: jest.fn().mockImplementation(() => ({
-      connect: jest.fn().mockResolvedValue(undefined),
-      disconnect: jest.fn().mockResolvedValue(undefined),
-      isConnected: jest.fn().mockReturnValue(true),
-      createRepository: jest.fn().mockReturnValue({ create: jest.fn() }),
-      withTransaction: jest.fn(async (cb: (ctx: unknown) => unknown) => cb({})),
-      healthCheck: jest
-        .fn()
-        .mockResolvedValue({ healthy: true, responseTimeMs: 1, type: 'mongo' }),
-    })),
+    MongoAdapter: jest
+      .fn()
+      .mockImplementation(() => createMockAdapter('mongo')),
   };
 });
 
 jest.mock('../adapters/postgres.adapter', () => {
   return {
-    PostgresAdapter: jest.fn().mockImplementation(() => ({
-      connect: jest.fn().mockReturnValue(undefined),
-      disconnect: jest.fn().mockResolvedValue(undefined),
-      isConnected: jest.fn().mockReturnValue(true),
-      createRepository: jest.fn().mockReturnValue({ create: jest.fn() }),
-      withTransaction: jest.fn(async (cb: (ctx: unknown) => unknown) => cb({})),
-      healthCheck: jest.fn().mockResolvedValue({
-        healthy: true,
-        responseTimeMs: 2,
-        type: 'postgres',
-      }),
-    })),
+    PostgresAdapter: jest
+      .fn()
+      .mockImplementation(() => createMockAdapter('postgres')),
   };
 });
 

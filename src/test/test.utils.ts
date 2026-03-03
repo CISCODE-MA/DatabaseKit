@@ -172,6 +172,43 @@ export const errorTestCases = [
 ];
 
 /**
+ * Creates a mock ArgumentsHost for testing exception filters.
+ */
+export function createMockHost() {
+  const response = {
+    status: jest.fn().mockReturnThis(),
+    json: jest.fn(),
+  };
+  const request = { url: '/test' };
+  const host = {
+    switchToHttp: () => ({
+      getResponse: () => response,
+      getRequest: () => request,
+    }),
+  } as any;
+
+  return { host, response };
+}
+
+/**
+ * Creates a mock adapter with default health check and connection methods.
+ */
+export function createMockAdapter(type: 'mongo' | 'postgres') {
+  return {
+    connect: jest.fn().mockResolvedValue(undefined),
+    disconnect: jest.fn().mockResolvedValue(undefined),
+    isConnected: jest.fn().mockReturnValue(true),
+    createRepository: jest.fn().mockReturnValue({ create: jest.fn() }),
+    withTransaction: jest.fn(async (cb: (ctx: unknown) => unknown) => cb({})),
+    healthCheck: jest.fn().mockResolvedValue({
+      healthy: true,
+      responseTimeMs: type === 'mongo' ? 1 : 2,
+      type,
+    }),
+  };
+}
+
+/**
  * Assertion helpers for common patterns.
  */
 export const assertions = {

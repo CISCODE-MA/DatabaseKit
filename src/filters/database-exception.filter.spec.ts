@@ -3,25 +3,10 @@ import {
   HttpStatus,
   InternalServerErrorException,
 } from '@nestjs/common';
-import type { ArgumentsHost } from '@nestjs/common';
+
+import { createMockHost } from '../test/test.utils';
 
 import { DatabaseExceptionFilter } from './database-exception.filter';
-
-const createHost = () => {
-  const response = {
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn(),
-  };
-  const request = { url: '/test' };
-  const host = {
-    switchToHttp: () => ({
-      getResponse: () => response,
-      getRequest: () => request,
-    }),
-  } as unknown as ArgumentsHost;
-
-  return { host, response };
-};
 
 describe('DatabaseExceptionFilter', () => {
   let filter: DatabaseExceptionFilter;
@@ -31,7 +16,7 @@ describe('DatabaseExceptionFilter', () => {
   });
 
   it('should handle HttpException', () => {
-    const { host, response } = createHost();
+    const { host, response } = createMockHost();
     const exception = new BadRequestException('Bad request');
 
     filter.catch(exception, host);
@@ -47,7 +32,7 @@ describe('DatabaseExceptionFilter', () => {
   });
 
   it('should handle MongoDB duplicate key error', () => {
-    const { host, response } = createHost();
+    const { host, response } = createMockHost();
     const exception = {
       name: 'MongoServerError',
       code: 11000,
@@ -66,7 +51,7 @@ describe('DatabaseExceptionFilter', () => {
   });
 
   it('should handle MongoDB cast error', () => {
-    const { host, response } = createHost();
+    const { host, response } = createMockHost();
     const exception = { name: 'CastError', message: 'invalid id' };
 
     filter.catch(exception, host);
@@ -81,7 +66,7 @@ describe('DatabaseExceptionFilter', () => {
   });
 
   it('should handle MongoDB validation error', () => {
-    const { host, response } = createHost();
+    const { host, response } = createMockHost();
     const exception = { name: 'ValidationError', message: 'invalid' };
 
     filter.catch(exception, host);
@@ -96,7 +81,7 @@ describe('DatabaseExceptionFilter', () => {
   });
 
   it('should handle postgres unique constraint', () => {
-    const { host, response } = createHost();
+    const { host, response } = createMockHost();
     const exception = {
       code: '23505',
       message: 'unique',
@@ -115,7 +100,7 @@ describe('DatabaseExceptionFilter', () => {
   });
 
   it('should handle postgres foreign key error', () => {
-    const { host, response } = createHost();
+    const { host, response } = createMockHost();
     const exception = { code: '23503', message: 'fk' };
 
     filter.catch(exception, host);
@@ -130,7 +115,7 @@ describe('DatabaseExceptionFilter', () => {
   });
 
   it('should handle generic errors', () => {
-    const { host, response } = createHost();
+    const { host, response } = createMockHost();
     const exception = new InternalServerErrorException('boom');
 
     filter.catch(exception, host);
@@ -147,7 +132,7 @@ describe('DatabaseExceptionFilter', () => {
   });
 
   it('should handle unknown errors', () => {
-    const { host, response } = createHost();
+    const { host, response } = createMockHost();
 
     filter.catch('unknown', host);
 
