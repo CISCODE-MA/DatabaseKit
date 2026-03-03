@@ -68,7 +68,7 @@ jobs:
 
       - name: SonarCloud Scan
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.sonar == 'true' }}
-        uses: SonarSource/sonarqube-scan-action@v6
+        uses: SonarSource/sonarqube-scan-action@v7
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
