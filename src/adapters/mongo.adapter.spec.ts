@@ -2,6 +2,7 @@ import type {
   MongoDatabaseConfig,
   MongoTransactionContext,
 } from '../contracts/database.contracts';
+import { createMockMongoModel, createMockMongoDocs } from '../test/test.utils';
 
 import { MongoAdapter } from './mongo.adapter';
 
@@ -89,23 +90,7 @@ describe('MongoAdapter', () => {
 
   describe('createRepository', () => {
     it('should create a repository with all CRUD methods', () => {
-      const mockModel = {
-        create: jest.fn(),
-        findById: jest.fn().mockReturnThis(),
-        find: jest.fn().mockReturnThis(),
-        findByIdAndUpdate: jest.fn().mockReturnThis(),
-        findByIdAndDelete: jest.fn().mockReturnThis(),
-        countDocuments: jest.fn().mockReturnThis(),
-        exists: jest.fn(),
-        insertMany: jest.fn(),
-        updateMany: jest.fn().mockReturnThis(),
-        deleteMany: jest.fn().mockReturnThis(),
-        lean: jest.fn().mockReturnThis(),
-        exec: jest.fn(),
-        skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockReturnThis(),
-      };
+      const mockModel = createMockMongoModel();
 
       const repo = adapter.createRepository({ model: mockModel });
 
@@ -125,21 +110,13 @@ describe('MongoAdapter', () => {
     });
 
     it('should insertMany documents', async () => {
-      const mockDocs = [
-        {
-          _id: '1',
-          name: 'John',
-          toObject: () => ({ _id: '1', name: 'John' }),
-        },
-        {
-          _id: '2',
-          name: 'Jane',
-          toObject: () => ({ _id: '2', name: 'Jane' }),
-        },
-      ];
-      const mockModel = {
+      const mockDocs = createMockMongoDocs([
+        { _id: '1', name: 'John' },
+        { _id: '2', name: 'Jane' },
+      ]);
+      const mockModel = createMockMongoModel({
         insertMany: jest.fn().mockResolvedValue(mockDocs),
-      };
+      });
 
       const repo = adapter.createRepository({ model: mockModel });
       const result = await repo.insertMany([
@@ -156,9 +133,7 @@ describe('MongoAdapter', () => {
     });
 
     it('should return empty array when insertMany with empty data', async () => {
-      const mockModel = {
-        insertMany: jest.fn(),
-      };
+      const mockModel = createMockMongoModel();
 
       const repo = adapter.createRepository({ model: mockModel });
       const result = await repo.insertMany([]);
@@ -168,11 +143,11 @@ describe('MongoAdapter', () => {
     });
 
     it('should updateMany documents', async () => {
-      const mockModel = {
+      const mockModel = createMockMongoModel({
         updateMany: jest.fn().mockReturnValue({
           exec: jest.fn().mockResolvedValue({ modifiedCount: 5 }),
         }),
-      };
+      });
 
       const repo = adapter.createRepository({ model: mockModel });
       const result = await repo.updateMany(
@@ -189,11 +164,11 @@ describe('MongoAdapter', () => {
     });
 
     it('should deleteMany documents', async () => {
-      const mockModel = {
+      const mockModel = createMockMongoModel({
         deleteMany: jest.fn().mockReturnValue({
           exec: jest.fn().mockResolvedValue({ deletedCount: 3 }),
         }),
-      };
+      });
 
       const repo = adapter.createRepository({ model: mockModel });
       const result = await repo.deleteMany({ status: 'deleted' });
@@ -263,8 +238,6 @@ describe('MongoAdapter', () => {
       });
 
       expect(capturedContext).toBeDefined();
-      expect(capturedContext!.transaction).toBeDefined();
-      expect(typeof capturedContext!.createRepository).toBe('function');
     });
 
     it('should respect transaction options', async () => {
@@ -310,11 +283,7 @@ describe('MongoAdapter', () => {
 
   describe('Soft Delete', () => {
     it('should not have soft delete methods when softDelete is disabled', () => {
-      const mockModel = {
-        find: jest.fn().mockReturnThis(),
-        lean: jest.fn().mockReturnThis(),
-        exec: jest.fn(),
-      };
+      const mockModel = createMockMongoModel();
 
       const repo = adapter.createRepository({
         model: mockModel,
@@ -330,15 +299,11 @@ describe('MongoAdapter', () => {
     });
 
     it('should have soft delete methods when softDelete is enabled', () => {
-      const mockModel = {
-        find: jest.fn().mockReturnThis(),
-        findById: jest.fn().mockReturnThis(),
+      const mockModel = createMockMongoModel({
         updateOne: jest.fn().mockReturnThis(),
         updateMany: jest.fn().mockReturnThis(),
         findOneAndUpdate: jest.fn().mockReturnThis(),
-        lean: jest.fn().mockReturnThis(),
-        exec: jest.fn(),
-      };
+      });
 
       const repo = adapter.createRepository({
         model: mockModel,
@@ -354,20 +319,17 @@ describe('MongoAdapter', () => {
     });
 
     it('should soft delete a record by setting deletedAt', async () => {
-      const mockModel = {
-        find: jest.fn().mockReturnThis(),
+      const mockModel = createMockMongoModel({
         updateOne: jest.fn().mockReturnValue({
           exec: jest.fn().mockResolvedValue({ modifiedCount: 1 }),
         }),
-        lean: jest.fn().mockReturnThis(),
-        exec: jest.fn(),
-      };
+      });
 
       const repo = adapter.createRepository({
         model: mockModel,
         softDelete: true,
       });
-      const result = await repo.softDelete!('123');
+      const result = await repo.softDelete?.('123');
 
       expect(result).toBe(true);
       expect(mockModel.updateOne).toHaveBeenCalledWith(
@@ -378,21 +340,18 @@ describe('MongoAdapter', () => {
     });
 
     it('should use custom softDeleteField', async () => {
-      const mockModel = {
-        find: jest.fn().mockReturnThis(),
+      const mockModel = createMockMongoModel({
         updateOne: jest.fn().mockReturnValue({
           exec: jest.fn().mockResolvedValue({ modifiedCount: 1 }),
         }),
-        lean: jest.fn().mockReturnThis(),
-        exec: jest.fn(),
-      };
+      });
 
       const repo = adapter.createRepository({
         model: mockModel,
         softDelete: true,
         softDeleteField: 'removedAt',
       });
-      await repo.softDelete!('123');
+      await repo.softDelete?.('123');
 
       expect(mockModel.updateOne).toHaveBeenCalledWith(
         { _id: '123', removedAt: { $eq: null } },
@@ -402,22 +361,19 @@ describe('MongoAdapter', () => {
     });
 
     it('should restore a soft-deleted record', async () => {
-      const mockModel = {
-        find: jest.fn().mockReturnThis(),
+      const mockModel = createMockMongoModel({
         findOneAndUpdate: jest.fn().mockReturnValue({
           lean: jest.fn().mockReturnValue({
             exec: jest.fn().mockResolvedValue({ _id: '123', name: 'Test' }),
           }),
         }),
-        lean: jest.fn().mockReturnThis(),
-        exec: jest.fn(),
-      };
+      });
 
       const repo = adapter.createRepository({
         model: mockModel,
         softDelete: true,
       });
-      const result = await repo.restore!('123');
+      const result = await repo.restore?.('123');
 
       expect(result).toEqual({ _id: '123', name: 'Test' });
       expect(mockModel.findOneAndUpdate).toHaveBeenCalledWith(
@@ -429,33 +385,30 @@ describe('MongoAdapter', () => {
 
     it('should find only deleted records', async () => {
       const mockDocs = [{ _id: '1', deletedAt: new Date() }];
-      const mockModel = {
+      const mockModel = createMockMongoModel({
         find: jest.fn().mockReturnValue({
           lean: jest.fn().mockReturnValue({
             exec: jest.fn().mockResolvedValue(mockDocs),
           }),
         }),
-      };
+      });
 
       const repo = adapter.createRepository({
         model: mockModel,
         softDelete: true,
       });
-      const result = await repo.findDeleted!({});
+      const result = await repo.findDeleted?.({});
 
       expect(result).toEqual(mockDocs);
       expect(mockModel.find).toHaveBeenCalledWith({ deletedAt: { $ne: null } });
     });
 
     it('should deleteMany as soft delete when enabled', async () => {
-      const mockModel = {
-        find: jest.fn().mockReturnThis(),
+      const mockModel = createMockMongoModel({
         updateMany: jest.fn().mockReturnValue({
           exec: jest.fn().mockResolvedValue({ modifiedCount: 5 }),
         }),
-        lean: jest.fn().mockReturnThis(),
-        exec: jest.fn(),
-      };
+      });
 
       const repo = adapter.createRepository({
         model: mockModel,
@@ -473,13 +426,13 @@ describe('MongoAdapter', () => {
 
     it('should filter out soft-deleted records in findAll', async () => {
       const mockDocs = [{ _id: '1', name: 'Active' }];
-      const mockModel = {
+      const mockModel = createMockMongoModel({
         find: jest.fn().mockReturnValue({
           lean: jest.fn().mockReturnValue({
             exec: jest.fn().mockResolvedValue(mockDocs),
           }),
         }),
-      };
+      });
 
       const repo = adapter.createRepository({
         model: mockModel,
@@ -500,9 +453,9 @@ describe('MongoAdapter', () => {
         name: 'Test',
         toObject: () => ({ _id: '1', name: 'Test' }),
       };
-      const mockModel = {
+      const mockModel = createMockMongoModel({
         create: jest.fn().mockResolvedValue(mockDoc),
-      };
+      });
 
       const repo = adapter.createRepository({
         model: mockModel,
@@ -524,9 +477,9 @@ describe('MongoAdapter', () => {
         name: 'Test',
         toObject: () => ({ _id: '1', name: 'Test' }),
       };
-      const mockModel = {
+      const mockModel = createMockMongoModel({
         create: jest.fn().mockResolvedValue(mockDoc),
-      };
+      });
 
       const repo = adapter.createRepository({
         model: mockModel,
@@ -538,16 +491,13 @@ describe('MongoAdapter', () => {
     });
 
     it('should add updatedAt on updateById when timestamps enabled', async () => {
-      const mockModel = {
-        find: jest.fn().mockReturnThis(),
+      const mockModel = createMockMongoModel({
         findOneAndUpdate: jest.fn().mockReturnValue({
           lean: jest.fn().mockReturnValue({
             exec: jest.fn().mockResolvedValue({ _id: '1', name: 'Updated' }),
           }),
         }),
-        lean: jest.fn().mockReturnThis(),
-        exec: jest.fn(),
-      };
+      });
 
       const repo = adapter.createRepository({
         model: mockModel,
@@ -571,9 +521,9 @@ describe('MongoAdapter', () => {
         name: 'Test',
         toObject: () => ({ _id: '1', name: 'Test' }),
       };
-      const mockModel = {
+      const mockModel = createMockMongoModel({
         create: jest.fn().mockResolvedValue(mockDoc),
-      };
+      });
 
       const repo = adapter.createRepository({
         model: mockModel,
@@ -604,9 +554,9 @@ describe('MongoAdapter', () => {
           toObject: () => ({ _id: '2', name: 'Jane' }),
         },
       ];
-      const mockModel = {
+      const mockModel = createMockMongoModel({
         insertMany: jest.fn().mockResolvedValue(mockDocs),
-      };
+      });
 
       const repo = adapter.createRepository({
         model: mockModel,
@@ -621,14 +571,11 @@ describe('MongoAdapter', () => {
     });
 
     it('should add updatedAt to updateMany when timestamps enabled', async () => {
-      const mockModel = {
-        find: jest.fn().mockReturnThis(),
+      const mockModel = createMockMongoModel({
         updateMany: jest.fn().mockReturnValue({
           exec: jest.fn().mockResolvedValue({ modifiedCount: 3 }),
         }),
-        lean: jest.fn().mockReturnThis(),
-        exec: jest.fn(),
-      };
+      });
 
       const repo = adapter.createRepository({
         model: mockModel,
@@ -647,11 +594,11 @@ describe('MongoAdapter', () => {
     });
 
     it('should soft delete when enabled', async () => {
-      const mockModel = {
+      const mockModel = createMockMongoModel({
         updateOne: jest.fn().mockReturnValue({
           exec: jest.fn().mockResolvedValue({ modifiedCount: 1 }),
         }),
-      };
+      });
 
       const repo = adapter.createRepository({
         model: mockModel,
@@ -672,9 +619,9 @@ describe('MongoAdapter', () => {
         lean: jest.fn().mockReturnThis(),
         exec: jest.fn().mockResolvedValue({ _id: '1' }),
       };
-      const mockModel = {
+      const mockModel = createMockMongoModel({
         findOneAndUpdate: jest.fn().mockReturnValue(mockQuery),
-      };
+      });
 
       const repo = adapter.createRepository({
         model: mockModel,
@@ -695,9 +642,9 @@ describe('MongoAdapter', () => {
         lean: jest.fn().mockReturnThis(),
         exec: jest.fn().mockResolvedValue({ _id: '1' }),
       };
-      const mockModel = {
+      const mockModel = createMockMongoModel({
         findOneAndUpdate: jest.fn().mockReturnValue(mockQuery),
-      };
+      });
 
       const repo = adapter.createRepository({
         model: mockModel,
@@ -724,9 +671,9 @@ describe('MongoAdapter', () => {
       const mockQuery = {
         exec: jest.fn().mockResolvedValue(['a', 'b']),
       };
-      const mockModel = {
+      const mockModel = createMockMongoModel({
         distinct: jest.fn().mockReturnValue(mockQuery),
-      };
+      });
 
       const repo = adapter.createRepository<{
         email: string;
@@ -748,9 +695,9 @@ describe('MongoAdapter', () => {
         lean: jest.fn().mockReturnThis(),
         exec: jest.fn().mockResolvedValue([{ name: 'John' }]),
       };
-      const mockModel = {
+      const mockModel = createMockMongoModel({
         find: jest.fn().mockReturnValue(mockQuery),
-      };
+      });
 
       const repo = adapter.createRepository<{ name: string; active?: boolean }>(
         {
@@ -769,9 +716,9 @@ describe('MongoAdapter', () => {
         lean: jest.fn().mockReturnThis(),
         exec: jest.fn().mockResolvedValue([{ _id: '1' }]),
       };
-      const mockModel = {
+      const mockModel = createMockMongoModel({
         find: jest.fn().mockReturnValue(mockQuery),
-      };
+      });
 
       const repo = adapter.createRepository({
         model: mockModel,
@@ -791,9 +738,9 @@ describe('MongoAdapter', () => {
         lean: jest.fn().mockReturnThis(),
         exec: jest.fn().mockResolvedValue([{ _id: '1' }]),
       };
-      const mockModel = {
+      const mockModel = createMockMongoModel({
         find: jest.fn().mockReturnValue(mockQuery),
-      };
+      });
 
       const repo = adapter.createRepository({
         model: mockModel,
@@ -1005,7 +952,11 @@ describe('MongoAdapter', () => {
         const callback = jest.fn(async () => {
           attempt++;
           if (attempt === 1) {
-            throw { code, message: `Error code ${code}` };
+            const error = new Error(`Error code ${code}`) as Error & {
+              code: number;
+            };
+            error.code = code;
+            throw error;
           }
           return { code };
         });

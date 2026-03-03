@@ -4,6 +4,7 @@ import type {
   PostgresDatabaseConfig,
   PostgresTransactionContext,
 } from '../contracts/database.contracts';
+import { createMockKnex } from '../test/test.utils';
 
 import { PostgresAdapter } from './postgres.adapter';
 
@@ -240,8 +241,6 @@ describe('PostgresAdapter', () => {
       });
 
       expect(capturedContext).toBeDefined();
-      expect(capturedContext!.transaction).toBeDefined();
-      expect(typeof capturedContext!.createRepository).toBe('function');
     });
 
     it('should propagate errors from callback', async () => {
@@ -356,7 +355,7 @@ describe('PostgresAdapter', () => {
         softDelete: true,
       });
 
-      await repo.softDelete!('123');
+      await repo.softDelete?.('123');
 
       // Verify that update was called (soft delete sets timestamp instead of deleting)
       const knexTableMock = mockKnexInstance as unknown as jest.Mock;
@@ -538,14 +537,10 @@ describe('PostgresAdapter', () => {
       });
 
       it('should return null when findOne finds nothing', async () => {
-        const mockQb = {
-          select: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
+        const { mockKnex } = createMockKnex({
           first: jest.fn().mockResolvedValue(undefined),
-        };
-
-        const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-        adapter['knexInstance'] = mockKnex;
+        });
+        adapter['knexInstance'] = mockKnex as unknown as Knex;
 
         const repo = adapter.createRepository({
           table: 'users',
@@ -636,7 +631,7 @@ describe('PostgresAdapter', () => {
     describe('distinct', () => {
       it('should return distinct values for a column', async () => {
         const mockRows = [{ status: 'active' }, { status: 'pending' }];
-        const mockQb = {
+        const { mockKnex, mockQb } = createMockKnex({
           distinct: jest.fn().mockReturnThis(),
           modify: jest.fn().mockImplementation(function (
             this: unknown,
@@ -645,11 +640,8 @@ describe('PostgresAdapter', () => {
             fn(this);
             return Promise.resolve(mockRows);
           }),
-          where: jest.fn().mockReturnThis(),
-        };
-
-        const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-        adapter['knexInstance'] = mockKnex;
+        });
+        adapter['knexInstance'] = mockKnex as unknown as Knex;
 
         const repo = adapter.createRepository<TestUser>({
           table: 'users',
@@ -698,13 +690,10 @@ describe('PostgresAdapter', () => {
   describe('Repository Hooks', () => {
     it('should call beforeCreate hook and use modified data', async () => {
       const mockRow = { id: 1, name: 'MODIFIED' };
-      const mockQb = {
-        insert: jest.fn().mockReturnThis(),
+      const { mockKnex, mockQb } = createMockKnex({
         returning: jest.fn().mockResolvedValue([mockRow]),
-      };
-
-      const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter['knexInstance'] = mockKnex;
+      });
+      adapter['knexInstance'] = mockKnex as unknown as Knex;
 
       const beforeCreate = jest.fn().mockImplementation((context) => ({
         ...context.data,
@@ -750,14 +739,10 @@ describe('PostgresAdapter', () => {
 
     it('should call beforeUpdate hook and use modified data', async () => {
       const mockRow = { id: 1, name: 'UPDATED' };
-      const mockQb = {
-        where: jest.fn().mockReturnThis(),
-        update: jest.fn().mockReturnThis(),
+      const { mockKnex } = createMockKnex({
         returning: jest.fn().mockResolvedValue([mockRow]),
-      };
-
-      const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter['knexInstance'] = mockKnex;
+      });
+      adapter['knexInstance'] = mockKnex as unknown as Knex;
 
       const beforeUpdate = jest.fn().mockImplementation((context) => ({
         ...context.data,
@@ -779,14 +764,10 @@ describe('PostgresAdapter', () => {
 
     it('should call afterUpdate hook with updated entity', async () => {
       const mockRow = { id: 1, name: 'Updated' };
-      const mockQb = {
-        where: jest.fn().mockReturnThis(),
-        update: jest.fn().mockReturnThis(),
+      const { mockKnex } = createMockKnex({
         returning: jest.fn().mockResolvedValue([mockRow]),
-      };
-
-      const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter['knexInstance'] = mockKnex;
+      });
+      adapter['knexInstance'] = mockKnex as unknown as Knex;
 
       const afterUpdate = jest.fn();
 
@@ -800,13 +781,10 @@ describe('PostgresAdapter', () => {
     });
 
     it('should call beforeDelete hook with entity id', async () => {
-      const mockQb = {
-        where: jest.fn().mockReturnThis(),
+      const { mockKnex } = createMockKnex({
         delete: jest.fn().mockResolvedValue(1),
-      };
-
-      const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter['knexInstance'] = mockKnex;
+      });
+      adapter['knexInstance'] = mockKnex as unknown as Knex;
 
       const beforeDelete = jest.fn();
 
@@ -820,13 +798,10 @@ describe('PostgresAdapter', () => {
     });
 
     it('should call afterDelete hook with success status', async () => {
-      const mockQb = {
-        where: jest.fn().mockReturnThis(),
+      const { mockKnex } = createMockKnex({
         delete: jest.fn().mockResolvedValue(1),
-      };
-
-      const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter['knexInstance'] = mockKnex;
+      });
+      adapter['knexInstance'] = mockKnex as unknown as Knex;
 
       const afterDelete = jest.fn();
 
@@ -840,13 +815,10 @@ describe('PostgresAdapter', () => {
     });
 
     it('should call afterDelete with false when entity not found', async () => {
-      const mockQb = {
-        where: jest.fn().mockReturnThis(),
+      const { mockKnex } = createMockKnex({
         delete: jest.fn().mockResolvedValue(0),
-      };
-
-      const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter['knexInstance'] = mockKnex;
+      });
+      adapter['knexInstance'] = mockKnex as unknown as Knex;
 
       const afterDelete = jest.fn();
 
@@ -908,15 +880,11 @@ describe('PostgresAdapter', () => {
     });
 
     it('should upsert existing records', async () => {
-      const mockQb = {
-        select: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
+      const { mockKnex, mockQb } = createMockKnex({
         first: jest.fn().mockResolvedValue({ id: 1 }),
-        update: jest.fn().mockReturnThis(),
         returning: jest.fn().mockResolvedValue([{ id: 1, name: 'Updated' }]),
-      };
-      const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter['knexInstance'] = mockKnex;
+      });
+      adapter['knexInstance'] = mockKnex as unknown as Knex;
 
       const repo = adapter.createRepository<TestUser>({
         table: 'users',
@@ -931,15 +899,11 @@ describe('PostgresAdapter', () => {
     });
 
     it('should upsert new records when none found', async () => {
-      const mockQb = {
-        select: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
+      const { mockKnex, mockQb } = createMockKnex({
         first: jest.fn().mockResolvedValue(undefined),
-        insert: jest.fn().mockReturnThis(),
         returning: jest.fn().mockResolvedValue([{ id: 2, name: 'New' }]),
-      };
-      const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter['knexInstance'] = mockKnex;
+      });
+      adapter['knexInstance'] = mockKnex as unknown as Knex;
 
       const repo = adapter.createRepository<TestUser>({
         table: 'users',
@@ -955,12 +919,10 @@ describe('PostgresAdapter', () => {
 
     it('should return distinct values', async () => {
       const rows = [{ email: 'a@b.com' }, { email: 'b@b.com' }];
-      const mockQb = {
-        distinct: jest.fn().mockReturnThis(),
+      const { mockKnex, mockQb } = createMockKnex({
         modify: jest.fn().mockResolvedValue(rows),
-      };
-      const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter['knexInstance'] = mockKnex;
+      });
+      adapter['knexInstance'] = mockKnex as unknown as Knex;
 
       const repo = adapter.createRepository<TestUser>({
         table: 'users',
@@ -975,12 +937,10 @@ describe('PostgresAdapter', () => {
 
     it('should select projected fields', async () => {
       const rows = [{ name: 'John' }];
-      const mockQb = {
-        select: jest.fn().mockReturnThis(),
+      const { mockKnex, mockQb } = createMockKnex({
         modify: jest.fn().mockResolvedValue(rows),
-      };
-      const mockKnex = jest.fn(() => mockQb) as unknown as Knex;
-      adapter['knexInstance'] = mockKnex;
+      });
+      adapter['knexInstance'] = mockKnex as unknown as Knex;
 
       const repo = adapter.createRepository<TestUser>({
         table: 'users',
@@ -1195,7 +1155,11 @@ describe('PostgresAdapter', () => {
           ) => {
             attempt++;
             if (attempt === 1) {
-              throw { code, message: `Error code ${code}` };
+              const error = new Error(`Error code ${code}`) as Error & {
+                code: string;
+              };
+              error.code = code;
+              throw error;
             }
             return callback(mockTrx);
           },

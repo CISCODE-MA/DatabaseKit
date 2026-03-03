@@ -41,10 +41,7 @@ export function addCreatedAtTimestamp<T extends Record<string, unknown>>(
   enabled: boolean,
   field: string,
 ): T {
-  if (enabled) {
-    return { ...data, [field]: new Date() };
-  }
-  return data;
+  return addTimestamp(data, enabled, field);
 }
 
 /**
@@ -60,10 +57,22 @@ export function addUpdatedAtTimestamp<T extends Record<string, unknown>>(
   enabled: boolean,
   field: string,
 ): T {
-  if (enabled) {
-    return { ...data, [field]: new Date() };
+  return addTimestamp(data, enabled, field);
+}
+
+/**
+ * Adds a timestamp to a specific field when enabled.
+ */
+function addTimestamp<T extends Record<string, unknown>>(
+  data: T,
+  enabled: boolean,
+  field: string,
+): T {
+  if (!enabled) {
+    return data;
   }
-  return data;
+
+  return { ...data, [field]: new Date() };
 }
 
 /**

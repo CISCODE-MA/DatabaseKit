@@ -209,6 +209,88 @@ export function createMockAdapter(type: 'mongo' | 'postgres') {
 }
 
 /**
+ * Creates a mock Mongoose model for testing MongoDB adapter.
+ * Returns a chainable mock with all common query methods.
+ */
+export function createMockMongoModel(overrides?: Partial<any>) {
+  const mockModel = {
+    create: jest.fn(),
+    findById: jest.fn().mockReturnThis(),
+    find: jest.fn().mockReturnThis(),
+    findOne: jest.fn().mockReturnThis(),
+    findByIdAndUpdate: jest.fn().mockReturnThis(),
+    findByIdAndDelete: jest.fn().mockReturnThis(),
+    findOneAndUpdate: jest.fn().mockReturnThis(),
+    distinct: jest.fn().mockReturnThis(),
+    countDocuments: jest.fn().mockReturnThis(),
+    exists: jest.fn(),
+    insertMany: jest.fn(),
+    updateMany: jest.fn().mockReturnThis(),
+    updateOne: jest.fn().mockReturnThis(),
+    deleteMany: jest.fn().mockReturnThis(),
+    lean: jest.fn().mockReturnThis(),
+    exec: jest.fn(),
+    skip: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    sort: jest.fn().mockReturnThis(),
+    ...overrides,
+  };
+  return mockModel;
+}
+
+/**
+ * Creates mock MongoDB documents with toObject() method.
+ * Useful for testing insertMany and find operations.
+ */
+export function createMockMongoDocs<T extends Record<string, any>>(
+  data: T[],
+): Array<T & { toObject: () => T }> {
+  return data.map((item) => ({
+    ...item,
+    toObject: () => item,
+  }));
+}
+
+/**
+ * Creates a mock Knex query builder for testing PostgreSQL adapter.
+ * Returns a chainable mock with all common query methods.
+ */
+export function createMockQueryBuilder(overrides?: Partial<any>) {
+  return {
+    select: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    whereIn: jest.fn().mockReturnThis(),
+    whereNull: jest.fn().mockReturnThis(),
+    first: jest.fn(),
+    returning: jest.fn().mockReturnThis(),
+    insert: jest.fn().mockReturnThis(),
+    update: jest.fn().mockReturnThis(),
+    delete: jest.fn().mockReturnThis(),
+    del: jest.fn().mockReturnThis(),
+    count: jest.fn().mockReturnThis(),
+    distinct: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    offset: jest.fn().mockReturnThis(),
+    modify: jest.fn().mockReturnThis(),
+    transacting: jest.fn().mockReturnThis(),
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a mock Knex instance for testing PostgreSQL adapter.
+ * Returns a function that creates query builders when called with a table name.
+ */
+export function createMockKnex(queryBuilderOverrides?: Partial<any>) {
+  const mockQb = createMockQueryBuilder(queryBuilderOverrides);
+  const mockKnex = jest.fn(() => mockQb) as any;
+  mockKnex.raw = jest.fn();
+  mockKnex.transaction = jest.fn();
+  return { mockKnex, mockQb };
+}
+
+/**
  * Assertion helpers for common patterns.
  */
 export const assertions = {
